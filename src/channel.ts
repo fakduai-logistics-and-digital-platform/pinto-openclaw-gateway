@@ -282,7 +282,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
               SenderId: payload.user_id ?? payload.chat_id,
               Provider: "pinto",
               Surface: "pinto",
-              ConversationLabel: payload.username ?? payload.chat_id,
+              ConversationLabel: `Pinto: ${payload.chat_id}`,
               Timestamp: Date.now(),
               CommandAuthorized: true,
             });
