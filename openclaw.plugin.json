@@ -1,5 +1,5 @@
 {
-    "id": "@fakduai/pinto-app-openclaw",
+    "id": "pinto-app-openclaw",
     "name": "Pinto Chat",
     "description": "Integration with Pinto Chat API",
     "version": "1.3.0",

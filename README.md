@@ -1,4 +1,4 @@
-# @fakduai/pinto-app-openclaw
+# pinto-app-openclaw
 
 [ภาษาไทย](#ภาษาไทย) | [English](#english)
 
@@ -8,7 +8,7 @@ OpenClaw channel plugin for Pinto Chat. It receives webhook events from Pinto, f
 
 ### ภาพรวม
 
-`@fakduai/pinto-app-openclaw` คือ OpenClaw channel plugin สำหรับเชื่อมต่อ Pinto Chat กับ OpenClaw agent
+`pinto-app-openclaw` คือ OpenClaw channel plugin สำหรับเชื่อมต่อ Pinto Chat กับ OpenClaw agent
 
 flow การทำงาน:
 
@@ -40,7 +40,7 @@ flow การทำงาน:
 วิธีที่แนะนำ:
 
 ```bash
-openclaw plugins install @fakduai/pinto-app-openclaw
+openclaw plugins install pinto-app-openclaw
 ```
 
 #### ติดตั้งจาก source ในเครื่อง
@@ -65,7 +65,7 @@ openclaw plugins install .
 ตัวอย่างปลายทาง:
 
 ```bash
-~/.openclaw/extensions/@fakduai/pinto-app-openclaw
+~/.openclaw/extensions/pinto-app-openclaw
 ```
 
 ### การตั้งค่าใน OpenClaw
@@ -108,7 +108,7 @@ openclaw plugins install .
 หมายเหตุ:
 
 - channel id ของปลั๊กอินคือ `pinto`
-- package name คือ `@fakduai/pinto-app-openclaw`
+- package name คือ `pinto-app-openclaw`
 
 ### การตั้งค่าฝั่ง Pinto
 
@@ -214,7 +214,7 @@ POST <apiUrl>/v1/bots/webhook/receive
 1. ติดตั้งปลั๊กอินด้วย:
 
 ```bash
-openclaw plugins install @fakduai/pinto-app-openclaw
+openclaw plugins install pinto-app-openclaw
 ```
 
 2. รีสตาร์ต OpenClaw หรือ reload plugins
@@ -323,7 +323,7 @@ npm test
 
 ### Overview
 
-`@fakduai/pinto-app-openclaw` is an OpenClaw channel plugin for Pinto Chat.
+`pinto-app-openclaw` is an OpenClaw channel plugin for Pinto Chat.
 
 Flow:
 
@@ -355,7 +355,7 @@ Main features:
 Recommended:
 
 ```bash
-openclaw plugins install @fakduai/pinto-app-openclaw
+openclaw plugins install pinto-app-openclaw
 ```
 
 #### Install from local source
@@ -380,7 +380,7 @@ If you deploy by copying files manually, copy these files into the OpenClaw exte
 Example destination:
 
 ```bash
-~/.openclaw/extensions/@fakduai/pinto-app-openclaw
+~/.openclaw/extensions/pinto-app-openclaw
 ```
 
 ### OpenClaw Configuration
@@ -422,7 +422,7 @@ Example config:
 Notes:
 
 - The channel id is `pinto`
-- The package name is `@fakduai/pinto-app-openclaw`
+- The package name is `pinto-app-openclaw`
 
 ### Pinto Configuration
 
@@ -530,7 +530,7 @@ Media example:
 1. Install the plugin with:
 
 ```bash
-openclaw plugins install @fakduai/pinto-app-openclaw
+openclaw plugins install pinto-app-openclaw
 ```
 
 2. Restart OpenClaw or reload plugins

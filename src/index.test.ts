@@ -19,7 +19,7 @@ const createMockApi = () => {
 
 describe("plugin registration", () => {
   it("should have correct id and name", () => {
-    expect(plugin.id).toBe("@fakduai/pinto-app-openclaw");
+    expect(plugin.id).toBe("pinto-app-openclaw");
     expect(plugin.name).toBe("Pinto Chat");
   });
 

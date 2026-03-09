@@ -2,7 +2,7 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { pintoPlugin, setPintoRuntime } from "./channel.js";
 
 const plugin = {
-  id: "@fakduai/pinto-app-openclaw",
+  id: "pinto-app-openclaw",
   name: "Pinto Chat",
   description: "Plugin to connect Pinto Chat with OpenClaw AI Agents",
 
