@@ -19,6 +19,7 @@ export interface PintoWebhookReceiveRequest {
   chat_id: string;
   reply_message: string;
   media_url?: string;
+  webhook_secret?: string;
 }
 
 /**
