@@ -1,0 +1,30 @@
+{
+    "id": "pinto",
+    "name": "Pinto Chat",
+    "description": "Integration with Pinto Chat API",
+    "version": "1.0.0",
+    "author": "Antigravity",
+    "channels": [
+        "pinto"
+    ],
+    "configSchema": {
+        "type": "object",
+        "properties": {
+            "pintoApiUrl": {
+                "type": "string",
+                "title": "Pinto API URL",
+                "description": "The base URL of the Pinto API",
+                "default": "http://localhost:1323"
+            },
+            "pintoWebhookSecret": {
+                "type": "string",
+                "title": "Webhook Secret",
+                "description": "Secret key for authenticating requests from Pinto",
+                "format": "password"
+            }
+        },
+        "required": [
+            "pintoApiUrl"
+        ]
+    }
+}
