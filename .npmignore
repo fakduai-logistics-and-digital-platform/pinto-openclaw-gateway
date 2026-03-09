@@ -1,0 +1,11 @@
+src/
+node_modules/
+*.test.ts
+*.spec.ts
+.git/
+.gitignore
+*.md
+!README.md
+vitest.config.ts
+tsconfig.json
+TODO.md

@@ -1,9 +1,41 @@
 {
     "name": "pinto-openclaw-gateway",
-    "version": "1.0.0",
+    "version": "1.1.5",
     "description": "OpenClaw Channel Plugin for Pinto Chat",
     "type": "module",
     "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "author": "Fakduai Logistics and Digital Platform",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/fakduai-logistics-and-digital-platform/pinto-openclaw-gateway.git"
+    },
+    "bugs": {
+        "url": "https://github.com/fakduai-logistics-and-digital-platform/pinto-openclaw-gateway/issues"
+    },
+    "homepage": "https://github.com/fakduai-logistics-and-digital-platform/pinto-openclaw-gateway#readme",
+    "keywords": [
+        "openclaw",
+        "pinto",
+        "chat",
+        "plugin",
+        "gateway",
+        "channel"
+    ],
+    "files": [
+        "dist",
+        "openclaw.plugin.json",
+        "README.md"
+    ],
+    "openclaw": {
+        "extensions": [
+            "./dist/index.js"
+        ]
+    },
+    "publishConfig": {
+        "access": "public"
+    },
     "scripts": {
         "build": "tsc",
         "dev": "tsx watch src/index.ts",
@@ -11,6 +43,9 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "prepare": "npm run build"
+    },
+    "peerDependencies": {
+        "openclaw": ">=2026.0.0"
     },
     "dependencies": {},
     "devDependencies": {

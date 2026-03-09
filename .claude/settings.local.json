@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx openclaw --help:*)",
+      "Bash(npx openclaw plugins --help:*)",
+      "Bash(npx openclaw plugins install --help:*)",
+      "Bash(npx openclaw plugins list --help:*)",
+      "Bash(npm install:*)",
+      "Bash(npm info:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm pack:*)",
+      "Bash(npm publish)",
+      "Bash(npm whoami:*)",
+      "Bash(npm publish:*)",
+      "Bash(npm config delete:*)",
+      "WebFetch(domain:docs.openclaw.ai)",
+      "Bash(npx vitest run:*)"
+    ]
+  }
+}

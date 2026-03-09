@@ -9,6 +9,7 @@
     ],
     "configSchema": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
             "pintoApiUrl": {
                 "type": "string",
@@ -19,12 +20,19 @@
             "pintoWebhookSecret": {
                 "type": "string",
                 "title": "Webhook Secret",
-                "description": "Secret key for authenticating requests from Pinto",
-                "format": "password"
+                "description": "Secret key for authenticating requests from Pinto"
             }
         },
-        "required": [
-            "pintoApiUrl"
-        ]
+        "required": []
+    },
+    "uiHints": {
+        "pintoApiUrl": {
+            "label": "Pinto API URL",
+            "placeholder": "https://api.pinto-app.com"
+        },
+        "pintoWebhookSecret": {
+            "label": "Webhook Secret",
+            "sensitive": true
+        }
     }
 }
