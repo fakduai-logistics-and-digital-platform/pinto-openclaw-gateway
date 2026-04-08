@@ -9,6 +9,7 @@ import {
   applySetupAccountConfigPatch,
   buildChannelConfigSchema,
   registerPluginHttpRoute,
+  setAccountEnabledInConfigSection,
 } from "openclaw/plugin-sdk/mattermost";
 import { z } from "zod";
 import { PintoWebhookPayload, PintoWebhookReceiveRequest } from "./types.js";
@@ -55,7 +56,7 @@ z
   .object({
     enabled: z.boolean().default(true),
     apiUrl: z.string().trim().min(1).default(DEFAULT_PINTO_API_URL),
-    botId: z.string().trim().min(1).optional(),
+    botId: z.string().trim().optional(),
     webhookSecret: PintoSecretInputSchema,
     webhookPath: z.string().trim().min(1).default(DEFAULT_PINTO_WEBHOOK_PATH),
   })
@@ -82,6 +83,7 @@ const normalizeWebhookSecret = (value: unknown): string | undefined => {
 export const buildDefaultPintoChannelConfig = () => ({
   enabled: true,
   apiUrl: DEFAULT_PINTO_API_URL,
+  botId: "",
   webhookSecret: generatePintoWebhookSecret(),
   webhookPath: DEFAULT_PINTO_WEBHOOK_PATH,
 });
@@ -137,6 +139,15 @@ const getRequestHeader = (
     return value[0];
   }
   return value ?? undefined;
+};
+
+const normalizeWebhookPath = (value: unknown): string => {
+  const trimmed =
+    typeof value === "string" ? value.trim() : DEFAULT_PINTO_WEBHOOK_PATH;
+  if (!trimmed) {
+    return DEFAULT_PINTO_WEBHOOK_PATH;
+  }
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 };
 
 async function sendPintoText(params: {
@@ -217,7 +228,30 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
     detailLabel: "Pinto Chat via API",
     description: "Adapter for Pinto Chat platform",
   } as any,
+  reload: { configPrefixes: ["channels.pinto"] },
   configSchema: buildChannelConfigSchema(PintoChannelConfigSchema),
+  security: {
+    collectWarnings: ({ account }: { account: any }) => {
+      const warnings: string[] = [];
+      const webhookPath = normalizeWebhookPath(account?.config?.webhookPath);
+      if (!account?.config?.botId?.trim()) {
+        warnings.push(
+          "Pinto botId is not configured. Set channels.pinto.botId to your real Pinto bot UUID.",
+        );
+      }
+      if (!normalizeWebhookSecret(account?.config?.webhookSecret)) {
+        warnings.push(
+          "Pinto webhookSecret is empty. Set channels.pinto.webhookSecret or let setup generate one.",
+        );
+      }
+      if (webhookPath !== (account?.config?.webhookPath?.trim() || webhookPath)) {
+        warnings.push(
+          `Pinto webhookPath should start with '/'. Use ${webhookPath} as channels.pinto.webhookPath.`,
+        );
+      }
+      return warnings;
+    },
+  },
   setup: {
     resolveAccountId: ({ accountId }) => accountId?.trim() || DEFAULT_ACCOUNT_ID,
     applyAccountConfig: ({
@@ -240,8 +274,8 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
           : resolved.botId?.trim() || undefined;
       const nextWebhookPath =
         input.webhookPath !== undefined
-          ? input.webhookPath.trim() || DEFAULT_PINTO_WEBHOOK_PATH
-          : resolved.webhookPath?.trim() || DEFAULT_PINTO_WEBHOOK_PATH;
+          ? normalizeWebhookPath(input.webhookPath)
+          : normalizeWebhookPath(resolved.webhookPath);
       return applySetupAccountConfigPatch({
         cfg,
         channelKey: "pinto",
@@ -272,6 +306,23 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
     listAccountIds: (cfg: any) => {
       return ["default"];
     },
+    defaultAccountId: () => DEFAULT_ACCOUNT_ID,
+    setAccountEnabled: ({
+      cfg,
+      accountId,
+      enabled,
+    }: {
+      cfg: any;
+      accountId: string;
+      enabled: boolean;
+    }) =>
+      setAccountEnabledInConfigSection({
+        cfg,
+        sectionKey: "pinto",
+        accountId,
+        enabled,
+        allowTopLevel: true,
+      }),
     resolveAccount: (cfg: any, accountId: string) => {
       const bot = getPintoChannelConfig(cfg, accountId);
       return {
@@ -349,10 +400,12 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
   gateway: {
     startAccount: async (ctx: any) => {
       const account = getPintoChannelConfig(ctx.cfg, ctx.accountId);
+      const configuredBotId = account?.botId?.trim();
+      const webhookPath = normalizeWebhookPath(account?.webhookPath);
       if (
         account?.enabled === false ||
         !account?.apiUrl?.trim() ||
-        !account?.botId?.trim()
+        !configuredBotId
       ) {
         return waitUntilAbort(ctx.abortSignal);
       }
@@ -364,8 +417,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
       }
 
       const unregister = registerPluginHttpRoute({
-        path:
-          account?.webhookPath?.trim() || DEFAULT_PINTO_WEBHOOK_PATH,
+        path: webhookPath,
         auth: "plugin",
         replaceExisting: true,
         pluginId: "pinto",
@@ -388,6 +440,18 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
               res.end(JSON.stringify({ error: "Missing required fields" }));
               return true;
             }
+            if (payload.bot_id !== configuredBotId) {
+              res.statusCode = 403;
+              res.end(JSON.stringify({ error: "Invalid bot_id for this account" }));
+              return true;
+            }
+
+            ctx.setStatus?.({
+              accountId: ctx.accountId,
+              configuredBotId,
+              webhookPath,
+              lastInboundAt: Date.now(),
+            });
 
             const route = ctx.channelRuntime.routing.resolveAgentRoute({
               cfg: ctx.cfg,

@@ -40,6 +40,51 @@ describe("pintoPlugin", () => {
     });
   });
 
+  describe("config account accessors", () => {
+    it("should expose defaultAccountId as default", () => {
+      expect(pintoPlugin.config.defaultAccountId!({} as any)).toBe("default");
+    });
+
+    it("should set account enabled state in config", () => {
+      const next = pintoPlugin.config.setAccountEnabled!({
+        cfg: {
+          channels: {
+            pinto: {
+              enabled: true,
+              apiUrl: "https://api.pinto-app.com",
+              botId: "bot-123",
+            },
+          },
+        },
+        accountId: "default",
+        enabled: false,
+      } as any);
+
+      expect(next.channels.pinto.enabled).toBe(false);
+    });
+  });
+
+  describe("security.collectWarnings", () => {
+    it("should warn when botId and webhookSecret are missing", () => {
+      const warnings = pintoPlugin.security!.collectWarnings!({
+        account: {
+          config: {
+            apiUrl: "https://api.pinto-app.com",
+            webhookPath: "plugins/pinto/webhook",
+          },
+        },
+      } as any);
+
+      expect(warnings).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("botId is not configured"),
+          expect.stringContaining("webhookSecret is empty"),
+          expect.stringContaining("webhookPath should start"),
+        ]),
+      );
+    });
+  });
+
   describe("config.describeAccount", () => {
     it("should use botId as the account name when configured", () => {
       const account = pintoPlugin.config.resolveAccount!(
@@ -291,4 +336,5 @@ describe("pintoPlugin", () => {
       );
     });
   });
+
 });

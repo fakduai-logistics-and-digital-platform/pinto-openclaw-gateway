@@ -48,6 +48,7 @@ describe("plugin registration", () => {
           pinto: expect.objectContaining({
             enabled: true,
             apiUrl: "https://api.pinto-app.com",
+            botId: "",
             webhookPath: "/plugins/pinto/webhook",
           }),
         }),
