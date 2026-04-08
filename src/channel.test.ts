@@ -124,6 +124,7 @@ describe("pintoPlugin", () => {
                   apiUrl: "https://api.pinto-app.com",
                   botId: "bot-support",
                   agentId: "support-agent",
+                  observerAgentIds: ["audit-agent", "memory-agent"],
                   webhookPath: "/plugins/pinto/support",
                 },
               },
@@ -135,6 +136,10 @@ describe("pintoPlugin", () => {
 
       expect(account.config.botId).toBe("bot-support");
       expect(account.config.agentId).toBe("support-agent");
+      expect(account.config.observerAgentIds).toEqual([
+        "audit-agent",
+        "memory-agent",
+      ]);
       expect(account.config.webhookPath).toBe("/plugins/pinto/support");
     });
   });
@@ -186,6 +191,7 @@ describe("pintoPlugin", () => {
         configured: true,
         botId: "bot-123",
         agentId: null,
+        observerAgentIds: [],
         webhookPath: "/plugins/pinto/webhook",
       });
     });
@@ -223,6 +229,7 @@ describe("pintoPlugin", () => {
       );
       expect(next.channels.pinto.webhookPath).toBe("/plugins/pinto/webhook");
       expect(next.channels.pinto.agentId).toBeUndefined();
+      expect(next.channels.pinto.observerAgentIds).toBeUndefined();
     });
 
     it("should keep an existing webhook secret when setup runs again", () => {
@@ -245,7 +252,7 @@ describe("pintoPlugin", () => {
       );
     });
 
-    it("should update botId, agentId, webhookSecret, and webhookPath from setup input", () => {
+    it("should update botId, agentId, observerAgentIds, webhookSecret, and webhookPath from setup input", () => {
       const next = pintoPlugin.setup!.applyAccountConfig({
         cfg: {
           channels: {
@@ -254,6 +261,7 @@ describe("pintoPlugin", () => {
               apiUrl: "https://api.pinto-app.com",
               botId: "bot-old",
               agentId: "agent-old",
+              observerAgentIds: ["observer-old"],
               webhookSecret: "secret-old",
               webhookPath: "/plugins/pinto/webhook",
             },
@@ -263,6 +271,7 @@ describe("pintoPlugin", () => {
         input: {
           botId: "bot-new",
           agentId: "agent-new",
+          observerAgentIds: ["observer-a", "observer-b", "observer-a"],
           webhookSecret: "secret-new",
           webhookPath: "/plugins/pinto/custom-webhook",
         },
@@ -270,6 +279,10 @@ describe("pintoPlugin", () => {
 
       expect(next.channels.pinto.botId).toBe("bot-new");
       expect(next.channels.pinto.agentId).toBe("agent-new");
+      expect(next.channels.pinto.observerAgentIds).toEqual([
+        "observer-a",
+        "observer-b",
+      ]);
       expect(next.channels.pinto.webhookSecret).toBe("secret-new");
       expect(next.channels.pinto.webhookPath).toBe(
         "/plugins/pinto/custom-webhook",

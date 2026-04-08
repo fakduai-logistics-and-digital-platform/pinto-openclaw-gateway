@@ -43,6 +43,7 @@ const PintoAccountConfigSchema = z
     apiUrl: z.string().trim().min(1).default(DEFAULT_PINTO_API_URL),
     botId: z.string().trim().optional(),
     agentId: z.string().trim().optional(),
+    observerAgentIds: z.array(z.string().trim().min(1)).optional(),
     webhookSecret: PintoSecretInputSchema,
     webhookPath: z.string().trim().min(1).default(DEFAULT_PINTO_WEBHOOK_PATH),
   })
@@ -100,6 +101,7 @@ type PintoSetupInput = {
   apiUrl?: string;
   botId?: string;
   agentId?: string;
+  observerAgentIds?: string[];
   webhookSecret?: unknown;
   webhookPath?: string;
 };
@@ -115,6 +117,7 @@ const hasTopLevelPintoConfig = (cfg: any) => {
       (
         channelConfig.botId !== undefined ||
         channelConfig.agentId !== undefined ||
+        channelConfig.observerAgentIds !== undefined ||
         channelConfig.webhookSecret !== undefined ||
         channelConfig.webhookHeaderValue !== undefined ||
         channelConfig.apiUrl !== undefined ||
@@ -197,6 +200,16 @@ const normalizeWebhookPath = (value: unknown): string => {
     return DEFAULT_PINTO_WEBHOOK_PATH;
   }
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+};
+
+const normalizeObserverAgentIds = (value: unknown): string[] | undefined => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const normalized = value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean);
+  return normalized.length ? Array.from(new Set(normalized)) : undefined;
 };
 
 async function sendPintoText(params: {
@@ -325,6 +338,10 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
         input.agentId !== undefined
           ? input.agentId.trim() || undefined
           : resolved.agentId?.trim() || undefined;
+      const nextObserverAgentIds =
+        input.observerAgentIds !== undefined
+          ? normalizeObserverAgentIds(input.observerAgentIds)
+          : normalizeObserverAgentIds(resolved.observerAgentIds);
       const nextWebhookPath =
         input.webhookPath !== undefined
           ? normalizeWebhookPath(input.webhookPath)
@@ -339,6 +356,9 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
             input.apiUrl?.trim() || resolved.apiUrl || DEFAULT_PINTO_API_URL,
           ...(nextBotId ? { botId: nextBotId } : {}),
           ...(nextAgentId ? { agentId: nextAgentId } : {}),
+          ...(nextObserverAgentIds
+            ? { observerAgentIds: nextObserverAgentIds }
+            : {}),
           webhookSecret:
             (inputWebhookSecret ? input.webhookSecret : undefined) ||
             (resolvedWebhookSecret ? resolved.webhookSecret : undefined) ||
@@ -407,6 +427,8 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
       ),
       botId: account.config?.botId?.trim() || null,
       agentId: account.config?.agentId?.trim() || null,
+      observerAgentIds:
+        normalizeObserverAgentIds(account.config?.observerAgentIds) || [],
       webhookPath:
         account.config?.webhookPath?.trim() || DEFAULT_PINTO_WEBHOOK_PATH,
     }),
@@ -455,6 +477,10 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
       const account = getPintoChannelConfig(ctx.cfg, ctx.accountId);
       const configuredBotId = account?.botId?.trim();
       const configuredAgentId = account?.agentId?.trim();
+      const observerAgentIds =
+        normalizeObserverAgentIds(account?.observerAgentIds)?.filter(
+          (agentId) => agentId !== configuredAgentId,
+        ) || [];
       const webhookPath = normalizeWebhookPath(account?.webhookPath);
       if (
         account?.enabled === false ||
@@ -511,6 +537,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
               accountId: ctx.accountId,
               configuredBotId,
               configuredAgentId: configuredAgentId || null,
+              configuredObserverAgentIds: observerAgentIds,
               webhookPath,
               lastInboundAt: Date.now(),
             });
@@ -533,14 +560,15 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
                   peer,
                 });
 
-            const msgCtx = ctx.channelRuntime.reply.finalizeInboundContext({
+            const buildMsgCtx = (sessionKey: string, accountId: string) =>
+              ctx.channelRuntime.reply.finalizeInboundContext({
               Body: payload.message ?? "",
               RawBody: payload.message ?? "",
               CommandBody: payload.message ?? "",
               From: `pinto:${payload.user_id ?? payload.chat_id}`,
               To: `pinto:${payload.chat_id}`,
-              SessionKey: route.sessionKey,
-              AccountId: route.accountId,
+              SessionKey: sessionKey,
+              AccountId: accountId,
               OriginatingChannel: "pinto",
               OriginatingTo: `pinto:${payload.chat_id}`,
               ChatType: "direct",
@@ -553,6 +581,39 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
               Timestamp: Date.now(),
               CommandAuthorized: true,
             });
+
+            const msgCtx = buildMsgCtx(route.sessionKey, route.accountId);
+
+            for (const observerAgentId of observerAgentIds) {
+              const observerSessionKey =
+                ctx.channelRuntime.routing.buildAgentSessionKey({
+                  agentId: observerAgentId,
+                  channel: "pinto",
+                  accountId: ctx.accountId,
+                  peer,
+                });
+              const observerCtx = buildMsgCtx(
+                observerSessionKey,
+                ctx.accountId,
+              );
+
+              // Observer agents share the inbound context but never reply back to Pinto.
+              void ctx.channelRuntime.reply
+                .dispatchReplyWithBufferedBlockDispatcher({
+                  ctx: observerCtx,
+                  cfg: ctx.cfg,
+                  dispatcherOptions: {
+                    deliver: async () => undefined,
+                  },
+                })
+                .catch((error: any) => {
+                  ctx.log?.warn?.(
+                    `[PintoPlugin] Observer agent ${observerAgentId} failed: ${
+                      error?.message ?? String(error)
+                    }`,
+                  );
+                });
+            }
 
             await ctx.channelRuntime.reply.dispatchReplyWithBufferedBlockDispatcher(
               {

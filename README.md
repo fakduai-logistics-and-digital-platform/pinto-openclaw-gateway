@@ -90,6 +90,10 @@ openclaw plugins install .
   - optional
   - ถ้าตั้งค่าไว้ bot นี้จะถูก route ไปยัง agent ที่ระบุโดยตรง
   - ถ้าไม่ตั้งค่า OpenClaw จะใช้ routing/config ปกติของระบบ
+- `Observer Agent Ids`
+  - optional
+  - เป็นรายชื่อ agent เสริมที่รับข้อความเดียวกัน
+  - observer จะไม่ตอบกลับ Pinto โดยตรง
 - `Webhook Secret`
   - secret ที่ใช้ร่วมกับ header `X-Pinto-Secret`
   - ถ้าไม่ได้ตั้งค่าไว้ ระบบจะไม่บังคับตรวจ secret ขาเข้า
@@ -104,6 +108,7 @@ openclaw plugins install .
 - ระบบจะเติม `apiUrl` เป็น `https://api.pinto-app.com`
 - ระบบจะเติม `botId` เป็นสตริงว่าง `""`
 - ระบบจะเติม `agentId` เป็นสตริงว่าง `""`
+- ระบบจะไม่เติม `observerAgentIds` ถ้ายังไม่ได้ใช้
 - ระบบจะ generate `webhookSecret` ให้ 1 ค่าอัตโนมัติ
 - ระบบจะเติม `webhookPath` เป็น `/plugins/pinto/webhook`
 - ผู้ใช้ยังต้องกรอก `botId` เองจาก Pinto bot จริง
@@ -142,6 +147,7 @@ openclaw plugins install .
           "apiUrl": "https://api.pinto-app.com",
           "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
           "agentId": "sales-agent",
+          "observerAgentIds": ["audit-agent", "memory-agent"],
           "webhookSecret": "pinto-oc-sales-secret",
           "webhookPath": "/plugins/pinto/sales"
         },
@@ -163,8 +169,10 @@ openclaw plugins install .
 
 - Pinto bot แต่ละตัวควรมี `botId`, `webhookSecret`, และ `webhookPath` ของตัวเอง
 - ถ้าต้องการแยก agent ต่อ bot ให้กำหนด `agentId` ของแต่ละ account
+- ถ้าต้องการให้ agent เสริมช่วยวิเคราะห์หรือบันทึกข้อมูล ให้กำหนด `observerAgentIds`
 - ให้ตั้ง `webhook_url` ของแต่ละ bot ไปยัง path ของตัวเอง
 - ถ้ากำหนด `agentId` ไว้ ปลั๊กอินจะ route bot นั้นไป agent ที่ระบุทันที
+- ถ้ากำหนด `observerAgentIds` ไว้ observer จะได้รับ inbound context เดียวกัน แต่จะไม่ตอบกลับ Pinto
 - ถ้าไม่กำหนด `agentId` ปลั๊กอินจะ fallback ไปใช้ routing/config ปกติของ OpenClaw
 - ห้ามใช้ `webhookPath` ซ้ำกันหลาย account เพราะ route จะชนกัน
 - `botId` ต้องตรงกับค่าที่ Pinto ส่งมาใน `payload.bot_id` จริง ไม่ควรใช้ alias ที่ตั้งเอง
@@ -665,6 +673,10 @@ Fields:
   - Optional
   - If set, this bot will be routed directly to that OpenClaw agent
   - If empty, the plugin falls back to normal OpenClaw routing
+- `Observer Agent Ids`
+  - Optional
+  - Additional agents that receive the same inbound context
+  - Observer agents do not reply back to Pinto
 - `Webhook Secret`
   - Shared secret used with `X-Pinto-Secret`
   - If empty, inbound secret validation is not enforced
@@ -699,6 +711,7 @@ Multi-account example:
           "apiUrl": "https://api.pinto-app.com",
           "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
           "agentId": "sales-agent",
+          "observerAgentIds": ["audit-agent", "memory-agent"],
           "webhookSecret": "pinto-oc-sales-secret",
           "webhookPath": "/plugins/pinto/sales"
         },
@@ -720,8 +733,10 @@ Multi-account notes:
 
 - Each Pinto bot should have its own `botId`, `webhookSecret`, and `webhookPath`
 - If you want a specific bot to use a specific agent, set `agentId` on that account
+- If you want helper agents to observe the same inbound message, set `observerAgentIds`
 - Each bot's `webhook_url` should point to its own unique path
 - When `agentId` is set, the plugin routes that bot directly to the named agent
+- When `observerAgentIds` is set, those observer agents receive the same inbound context but do not reply to Pinto
 - When `agentId` is empty, the plugin falls back to normal OpenClaw routing
 - Do not reuse the same `webhookPath` across multiple accounts, or routes will collide
 - `botId` must exactly match the value Pinto sends in `payload.bot_id`
@@ -829,6 +844,7 @@ Single-account example:
       "apiUrl": "https://api.pinto-app.com",
       "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
       "agentId": "sales-agent",
+      "observerAgentIds": ["audit-agent", "memory-agent"],
       "webhookSecret": "pinto-oc-9f3a1b7c5d2e8k4m",
       "webhookPath": "/plugins/pinto/webhook"
     }
@@ -849,6 +865,7 @@ Multi-account example:
           "apiUrl": "https://api.pinto-app.com",
           "botId": "bot-sales",
           "agentId": "sales-agent",
+          "observerAgentIds": ["audit-agent", "memory-agent"],
           "webhookSecret": "secret-sales",
           "webhookPath": "/plugins/pinto/sales"
         },
@@ -917,6 +934,7 @@ Notes:
 
 - If you do not need multiple agents yet, start with `agentId: "main"`
 - If `agentId` is omitted, the plugin falls back to normal OpenClaw routing
+- If you use `observerAgentIds`, they observe the same inbound message but do not send replies to Pinto
 
 ### Pinto Configuration
 
