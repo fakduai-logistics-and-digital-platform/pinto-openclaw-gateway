@@ -156,6 +156,8 @@ openclaw plugins install .
 - Pinto bot แต่ละตัวควรมี `botId`, `webhookSecret`, และ `webhookPath` ของตัวเอง
 - ให้ตั้ง `webhook_url` ของแต่ละ bot ไปยัง path ของตัวเอง
 - จากนั้นใน OpenClaw สามารถ map account แต่ละตัวไปคนละ agent ได้ตาม routing/config ของ OpenClaw
+- ห้ามใช้ `webhookPath` ซ้ำกันหลาย account เพราะ route จะชนกัน
+- `botId` ต้องตรงกับค่าที่ Pinto ส่งมาใน `payload.bot_id` จริง ไม่ควรใช้ alias ที่ตั้งเอง
 
 หมายเหตุ:
 
@@ -503,6 +505,13 @@ Multi-account example:
   }
 }
 ```
+
+Multi-account notes:
+
+- Each Pinto bot should have its own `botId`, `webhookSecret`, and `webhookPath`
+- Each bot's `webhook_url` should point to its own unique path
+- Do not reuse the same `webhookPath` across multiple accounts, or routes will collide
+- `botId` must exactly match the value Pinto sends in `payload.bot_id`
 
 Notes:
 
