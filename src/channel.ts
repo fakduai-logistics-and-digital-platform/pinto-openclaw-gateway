@@ -8,8 +8,6 @@ import {
   DEFAULT_ACCOUNT_ID,
   applySetupAccountConfigPatch,
   buildChannelConfigSchema,
-  buildSecretInputSchema,
-  normalizeSecretInputString,
   registerPluginHttpRoute,
 } from "openclaw/plugin-sdk/mattermost";
 import { z } from "zod";
@@ -26,18 +24,67 @@ export const setPintoRuntime = (r: RuntimeEnv) => {
   runtime = r;
 };
 
-const PintoChannelConfigSchema = z
+const PintoSecretInputSchema = z
+  .union([
+    z.string(),
+    z.object({
+      source: z.string().optional(),
+      provider: z.string().optional(),
+      id: z.string().optional(),
+      value: z.string().optional(),
+    }),
+  ])
+  .optional();
+
+const PintoChannelConfigSchema = z.preprocess((raw) => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return raw;
+  }
+
+  const value = { ...(raw as Record<string, unknown>) };
+  if (
+    value.webhookSecret === undefined &&
+    value.webhookHeaderValue !== undefined
+  ) {
+    value.webhookSecret = value.webhookHeaderValue;
+  }
+  delete value.webhookHeaderValue;
+  return value;
+},
+z
   .object({
     enabled: z.boolean().default(true),
     apiUrl: z.string().trim().min(1).default(DEFAULT_PINTO_API_URL),
     botId: z.string().trim().min(1).optional(),
-    webhookSecret: buildSecretInputSchema().optional(),
+    webhookSecret: PintoSecretInputSchema,
     webhookPath: z.string().trim().min(1).default(DEFAULT_PINTO_WEBHOOK_PATH),
   })
-  .strict();
+  .strict());
 
 const generatePintoWebhookSecret = () =>
   `pinto-oc-${randomBytes(12).toString("hex")}`;
+
+const normalizeWebhookSecret = (value: unknown): string | undefined => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || undefined;
+  }
+  if (value && typeof value === "object") {
+    const raw = (value as { value?: unknown }).value;
+    if (typeof raw === "string") {
+      const trimmed = raw.trim();
+      return trimmed || undefined;
+    }
+  }
+  return undefined;
+};
+
+export const buildDefaultPintoChannelConfig = () => ({
+  enabled: true,
+  apiUrl: DEFAULT_PINTO_API_URL,
+  webhookSecret: generatePintoWebhookSecret(),
+  webhookPath: DEFAULT_PINTO_WEBHOOK_PATH,
+});
 
 type PintoSetupInput = {
   name?: string;
@@ -51,11 +98,22 @@ const getPintoChannelConfig = (cfg: any, accountId?: string | null) => {
   const resolvedAccountId = accountId ?? "default";
   const channelConfig = cfg?.channels?.pinto ?? {};
   const accountConfig = channelConfig.accounts?.[resolvedAccountId];
-  return {
+  const merged = {
     enabled: true,
     apiUrl: DEFAULT_PINTO_API_URL,
     webhookPath: DEFAULT_PINTO_WEBHOOK_PATH,
     ...(accountConfig ?? channelConfig),
+  };
+
+  if (
+    merged.webhookSecret === undefined &&
+    merged.webhookHeaderValue !== undefined
+  ) {
+    merged.webhookSecret = merged.webhookHeaderValue;
+  }
+
+  return {
+    ...merged,
   };
 };
 
@@ -63,7 +121,7 @@ const buildPintoHeaders = (webhookSecret?: string) => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  const secret = normalizeSecretInputString(webhookSecret);
+  const secret = normalizeWebhookSecret(webhookSecret);
   if (secret) {
     headers["X-Pinto-Secret"] = secret;
   }
@@ -92,7 +150,7 @@ async function sendPintoText(params: {
     account?.apiUrl ?? "https://api-dev.pinto-app.com",
   );
   const botId = account?.botId?.trim();
-  const webhookSecret = normalizeSecretInputString(account?.webhookSecret);
+  const webhookSecret = normalizeWebhookSecret(account?.webhookSecret);
   if (!botId) {
     throw new Error("Pinto botId is not configured");
   }
@@ -172,8 +230,8 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
       input: PintoSetupInput;
     }) => {
       const resolved = getPintoChannelConfig(cfg, accountId);
-      const inputWebhookSecret = normalizeSecretInputString(input.webhookSecret);
-      const resolvedWebhookSecret = normalizeSecretInputString(
+      const inputWebhookSecret = normalizeWebhookSecret(input.webhookSecret);
+      const resolvedWebhookSecret = normalizeWebhookSecret(
         resolved.webhookSecret,
       );
       const nextBotId =
@@ -261,7 +319,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
         account?.apiUrl ?? "https://api-dev.pinto-app.com",
       );
       const botId = account?.botId?.trim();
-      const webhookSecret = normalizeSecretInputString(account?.webhookSecret);
+      const webhookSecret = normalizeWebhookSecret(account?.webhookSecret);
 
       if (!botId) {
         throw new Error("Pinto botId is not configured");
@@ -314,7 +372,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
         accountId: ctx.accountId,
         handler: async (req, res) => {
           try {
-            const configuredSecret = normalizeSecretInputString(
+            const configuredSecret = normalizeWebhookSecret(
               account?.webhookSecret,
             );
             const inboundSecret = getRequestHeader(req, PINTO_SECRET_HEADER);

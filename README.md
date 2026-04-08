@@ -98,7 +98,7 @@ openclaw plugins install .
 
 - ระบบจะเติมค่าเริ่มต้น `enabled: true`
 - ระบบจะเติม `apiUrl` เป็น `https://api.pinto-app.com`
-- ระบบจะ generate `webhookSecret` ให้ 1 ค่าอัตโนมัติ
+- ระบบจะ generate `webhookHeaderValue` ให้ 1 ค่าอัตโนมัติ
 - ระบบจะเติม `webhookPath` เป็น `/plugins/pinto/webhook`
 - ผู้ใช้ยังต้องกรอก `botId` เองจาก Pinto bot จริง
 
@@ -111,7 +111,7 @@ openclaw plugins install .
       "enabled": true,
       "apiUrl": "https://api.pinto-app.com",
       "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
-      "webhookSecret": "pinto-oc-9f3a1b7c5d2e8k4m",
+      "webhookHeaderValue": "pinto-oc-9f3a1b7c5d2e8k4m",
       "webhookPath": "/plugins/pinto/webhook"
     }
   }
@@ -430,7 +430,7 @@ Example config:
       "enabled": true,
       "apiUrl": "https://api.pinto-app.com",
       "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
-      "webhookSecret": "pinto-oc-9f3a1b7c5d2e8k4m"
+      "webhookHeaderValue": "pinto-oc-9f3a1b7c5d2e8k4m"
     }
   }
 }

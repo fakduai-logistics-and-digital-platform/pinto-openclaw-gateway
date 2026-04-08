@@ -68,6 +68,23 @@ describe("pintoPlugin", () => {
         webhookPath: "/plugins/pinto/webhook",
       });
     });
+
+    it("should migrate legacy webhookHeaderValue into webhookSecret", () => {
+      const account = pintoPlugin.config.resolveAccount!(
+        {
+          channels: {
+            pinto: {
+              apiUrl: "https://api.pinto-app.com",
+              botId: "bot-legacy",
+              webhookHeaderValue: "legacy-secret",
+            },
+          },
+        },
+        "default",
+      );
+
+      expect(account.config.webhookSecret).toBe("legacy-secret");
+    });
   });
 
   describe("setup.applyAccountConfig", () => {
@@ -80,7 +97,9 @@ describe("pintoPlugin", () => {
 
       expect(next.channels.pinto.enabled).toBe(true);
       expect(next.channels.pinto.apiUrl).toBe("https://api.pinto-app.com");
-      expect(next.channels.pinto.webhookSecret).toMatch(/^pinto-oc-[a-f0-9]{24}$/);
+      expect(next.channels.pinto.webhookSecret).toMatch(
+        /^pinto-oc-[a-f0-9]{24}$/,
+      );
       expect(next.channels.pinto.webhookPath).toBe("/plugins/pinto/webhook");
     });
 
