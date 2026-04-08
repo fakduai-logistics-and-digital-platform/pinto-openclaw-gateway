@@ -30,7 +30,7 @@ flow การทำงาน:
 - Node.js 20+ และ npm
 - Pinto bot ที่สร้างไว้แล้ว
 - Bot UUID จริงของ Pinto
-- Pinto API base URL ที่ถูกต้อง เช่น `https://api-dev.pinto-app.com`
+- Pinto API base URL ที่ถูกต้อง เช่น `https://api.pinto-app.com`
 - URL ที่ Pinto เข้าถึง OpenClaw ได้จริง เช่น domain, reverse proxy, Tailscale, tunnel
 
 ### การติดตั้ง
@@ -80,7 +80,7 @@ openclaw plugins install .
 - `Api Url`
   - Pinto API base URL
   - ใส่ได้ทั้งแบบมี `/` ท้ายหรือไม่มี `/` ท้าย
-  - ตัวอย่าง `https://api-dev.pinto-app.com`
+  - ตัวอย่าง `https://api.pinto-app.com`
 - `Bot Id`
   - ต้องเป็น Bot UUID จริงของ Pinto
   - ไม่ใช่ `bot_id` แบบ slug
@@ -97,7 +97,7 @@ openclaw plugins install .
   "channels": {
     "pinto": {
       "enabled": true,
-      "apiUrl": "https://api-dev.pinto-app.com",
+      "apiUrl": "https://api.pinto-app.com",
       "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
       "webhookSecret": "pinto-oc-9f3a1b7c5d2e8k4m"
     }
@@ -265,7 +265,7 @@ curl -i -X POST https://your-host.example.com/plugins/pinto/webhook \
 #### ทดสอบ outbound ตรงไปที่ Pinto API
 
 ```bash
-curl -i -X POST https://api-dev.pinto-app.com/v1/bots/webhook/receive \
+curl -i -X POST https://api.pinto-app.com/v1/bots/webhook/receive \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
@@ -345,7 +345,7 @@ Main features:
 - Node.js 20+ and npm
 - An existing Pinto bot
 - The real Pinto bot UUID
-- A valid Pinto API base URL such as `https://api-dev.pinto-app.com`
+- A valid Pinto API base URL such as `https://api.pinto-app.com`
 - A public or reachable URL that Pinto can call
 
 ### Installation
@@ -411,7 +411,7 @@ Example config:
   "channels": {
     "pinto": {
       "enabled": true,
-      "apiUrl": "https://api-dev.pinto-app.com",
+      "apiUrl": "https://api.pinto-app.com",
       "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
       "webhookSecret": "pinto-oc-9f3a1b7c5d2e8k4m"
     }
@@ -581,7 +581,7 @@ curl -i -X POST https://your-host.example.com/plugins/pinto/webhook \
 #### Direct outbound test to Pinto API
 
 ```bash
-curl -i -X POST https://api-dev.pinto-app.com/v1/bots/webhook/receive \
+curl -i -X POST https://api.pinto-app.com/v1/bots/webhook/receive \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
