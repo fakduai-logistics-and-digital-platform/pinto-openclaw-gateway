@@ -90,6 +90,13 @@ openclaw plugins install .
   - secret ที่ใช้ร่วมกับ header `X-Pinto-Secret`
   - ถ้าไม่ได้ตั้งค่าไว้ ระบบจะไม่บังคับตรวจ secret ขาเข้า
 
+หลังติดตั้งและเปิด setup ของ channel:
+
+- ระบบจะเติมค่าเริ่มต้น `enabled: true`
+- ระบบจะเติม `apiUrl` เป็น `https://api.pinto-app.com`
+- ระบบจะ generate `webhookSecret` ให้ 1 ค่าอัตโนมัติ
+- ผู้ใช้ยังต้องกรอก `botId` เองจาก Pinto bot จริง
+
 ตัวอย่าง config:
 
 ```json

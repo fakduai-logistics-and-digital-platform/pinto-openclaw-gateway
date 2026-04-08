@@ -1,9 +1,12 @@
+import { randomBytes } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type {
   ChannelPlugin,
   RuntimeEnv,
 } from "openclaw/plugin-sdk/mattermost";
 import {
+  DEFAULT_ACCOUNT_ID,
+  applySetupAccountConfigPatch,
   buildChannelConfigSchema,
   registerPluginHttpRoute,
 } from "openclaw/plugin-sdk/mattermost";
@@ -12,6 +15,7 @@ import { PintoWebhookPayload, PintoWebhookReceiveRequest } from "./types.js";
 
 const stripTrailingSlash = (url: string) => url.replace(/\/+$/, "");
 const PINTO_SECRET_HEADER = "x-pinto-secret";
+const DEFAULT_PINTO_API_URL = "https://api.pinto-app.com";
 
 let runtime: RuntimeEnv;
 
@@ -22,11 +26,21 @@ export const setPintoRuntime = (r: RuntimeEnv) => {
 const PintoChannelConfigSchema = z
   .object({
     enabled: z.boolean().default(true),
-    apiUrl: z.string().trim().min(1).default("https://api.pinto-app.com/"),
+    apiUrl: z.string().trim().min(1).default(DEFAULT_PINTO_API_URL),
     botId: z.string().trim().min(1).optional(),
     webhookSecret: z.string().trim().optional(),
   })
   .strict();
+
+const generatePintoWebhookSecret = () =>
+  `pinto-oc-${randomBytes(12).toString("hex")}`;
+
+type PintoSetupInput = {
+  name?: string;
+  apiUrl?: string;
+  botId?: string;
+  webhookSecret?: string;
+};
 
 const getPintoChannelConfig = (cfg: any, accountId?: string | null) => {
   const resolvedAccountId = accountId ?? "default";
@@ -34,6 +48,7 @@ const getPintoChannelConfig = (cfg: any, accountId?: string | null) => {
   const accountConfig = channelConfig.accounts?.[resolvedAccountId];
   return {
     enabled: true,
+    apiUrl: DEFAULT_PINTO_API_URL,
     ...(accountConfig ?? channelConfig),
   };
 };
@@ -139,6 +154,35 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
     description: "Adapter for Pinto Chat platform",
   } as any,
   configSchema: buildChannelConfigSchema(PintoChannelConfigSchema),
+  setup: {
+    resolveAccountId: ({ accountId }) => accountId?.trim() || DEFAULT_ACCOUNT_ID,
+    applyAccountConfig: ({
+      cfg,
+      accountId,
+      input,
+    }: {
+      cfg: any;
+      accountId: string;
+      input: PintoSetupInput;
+    }) => {
+      const resolved = getPintoChannelConfig(cfg, accountId);
+      return applySetupAccountConfigPatch({
+        cfg,
+        channelKey: "pinto",
+        accountId,
+        patch: {
+          enabled: true,
+          apiUrl:
+            input.apiUrl?.trim() || resolved.apiUrl || DEFAULT_PINTO_API_URL,
+          ...(input.botId?.trim() ? { botId: input.botId.trim() } : {}),
+          webhookSecret:
+            input.webhookSecret?.trim() ||
+            resolved.webhookSecret?.trim() ||
+            generatePintoWebhookSecret(),
+        },
+      });
+    },
+  },
   capabilities: {
     chatTypes: ["direct"],
     media: true,

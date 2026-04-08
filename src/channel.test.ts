@@ -40,6 +40,40 @@ describe("pintoPlugin", () => {
     });
   });
 
+  describe("setup.applyAccountConfig", () => {
+    it("should apply default Pinto config and generate a webhook secret", () => {
+      const next = pintoPlugin.setup!.applyAccountConfig({
+        cfg: { channels: {} },
+        accountId: "default",
+        input: {},
+      } as any);
+
+      expect(next.channels.pinto.enabled).toBe(true);
+      expect(next.channels.pinto.apiUrl).toBe("https://api.pinto-app.com");
+      expect(next.channels.pinto.webhookSecret).toMatch(/^pinto-oc-[a-f0-9]{24}$/);
+    });
+
+    it("should keep an existing webhook secret when setup runs again", () => {
+      const next = pintoPlugin.setup!.applyAccountConfig({
+        cfg: {
+          channels: {
+            pinto: {
+              enabled: true,
+              apiUrl: "https://api.pinto-app.com",
+              webhookSecret: "pinto-oc-existingsecret123",
+            },
+          },
+        },
+        accountId: "default",
+        input: {},
+      } as any);
+
+      expect(next.channels.pinto.webhookSecret).toBe(
+        "pinto-oc-existingsecret123",
+      );
+    });
+  });
+
   describe("outbound.sendText", () => {
     beforeEach(() => {
       vi.restoreAllMocks();
