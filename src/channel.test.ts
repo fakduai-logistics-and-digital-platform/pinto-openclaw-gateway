@@ -14,6 +14,19 @@ describe("pintoPlugin", () => {
     });
   });
 
+  describe("agentPrompt", () => {
+    it("should tell agents that normal final replies are delivered to Pinto", () => {
+      const hints = pintoPlugin.agentPrompt!.messageToolHints!({
+        cfg: {},
+        accountId: "default",
+      } as any).join("\n");
+
+      expect(hints).toContain("reply with normal assistant text");
+      expect(hints).toContain("automatically sends your final reply");
+      expect(hints).toContain("Do not call the Pinto API");
+    });
+  });
+
   describe("config.inspectAccount", () => {
     it("should return token status for a configured account", () => {
       const cfg = {
@@ -158,6 +171,7 @@ describe("pintoPlugin", () => {
       expect(warnings).toEqual(
         expect.arrayContaining([
           expect.stringContaining("botId is not configured"),
+          expect.stringContaining("real Pinto bot id"),
           expect.stringContaining("webhookSecret is empty"),
           expect.stringContaining("webhookPath should start"),
         ]),
@@ -215,7 +229,7 @@ describe("pintoPlugin", () => {
   });
 
   describe("setup.applyAccountConfig", () => {
-    it("should apply default Pinto config and generate a webhook secret", () => {
+    it("should apply default Pinto config without generating a webhook secret", () => {
       const next = pintoPlugin.setup!.applyAccountConfig({
         cfg: { channels: {} },
         accountId: "default",
@@ -224,9 +238,7 @@ describe("pintoPlugin", () => {
 
       expect(next.channels.pinto.enabled).toBe(true);
       expect(next.channels.pinto.apiUrl).toBe("https://api.pinto-app.com");
-      expect(next.channels.pinto.webhookSecret).toMatch(
-        /^pinto-oc-[a-f0-9]{24}$/,
-      );
+      expect(next.channels.pinto.webhookSecret).toBe("");
       expect(next.channels.pinto.webhookPath).toBe("/plugins/pinto/webhook");
       expect(next.channels.pinto.agentId).toBeUndefined();
       expect(next.channels.pinto.observerAgentIds).toBeUndefined();
@@ -425,6 +437,9 @@ describe("pintoPlugin", () => {
             "Content-Type": "application/json",
             "X-Pinto-Secret": "secret123",
           }),
+          body: expect.stringContaining(
+            '"media_url":"https://img.example.com/a.png"',
+          ),
         }),
       );
     });
