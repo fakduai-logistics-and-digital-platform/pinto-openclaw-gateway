@@ -312,6 +312,7 @@ describe("pintoPlugin", () => {
         ok: false,
         status: 502,
         statusText: "Bad Gateway",
+        text: vi.fn().mockResolvedValue('{"error":"bad chat id"}'),
       });
 
       await expect(
@@ -332,7 +333,7 @@ describe("pintoPlugin", () => {
             },
           },
         } as any),
-      ).rejects.toThrow();
+      ).rejects.toThrow('{"error":"bad chat id"}');
     });
 
     it("should return messageId on success", async () => {
@@ -368,6 +369,39 @@ describe("pintoPlugin", () => {
           }),
         }),
       );
+      expect(
+        JSON.parse((global.fetch as any).mock.calls[0][1].body),
+      ).toMatchObject({
+        chat_id: "chat1",
+      });
+    });
+
+    it("should strip pinto prefix from outbound text chat id", async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+
+      await pintoPlugin.outbound.sendText({
+        to: "pinto:efa0609a-chat",
+        text: "hello",
+        accountId: "bot1",
+        cfg: {
+          channels: {
+            pinto: {
+              accounts: {
+                bot1: {
+                  apiUrl: "https://api.pinto-app.com",
+                  botId: "bot-123",
+                },
+              },
+            },
+          },
+        },
+      } as any);
+
+      expect(
+        JSON.parse((global.fetch as any).mock.calls[0][1].body),
+      ).toMatchObject({
+        chat_id: "efa0609a-chat",
+      });
     });
   });
 
@@ -442,6 +476,41 @@ describe("pintoPlugin", () => {
           ),
         }),
       );
+      expect(
+        JSON.parse((global.fetch as any).mock.calls[0][1].body),
+      ).toMatchObject({
+        chat_id: "chat1",
+      });
+    });
+
+    it("should strip pinto prefix from outbound media chat id", async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+
+      await pintoPlugin.outbound.sendMedia!({
+        to: "pinto:efa0609a-chat",
+        text: "check this",
+        mediaUrl: "https://img.example.com/a.png",
+        accountId: "bot1",
+        cfg: {
+          channels: {
+            pinto: {
+              accounts: {
+                bot1: {
+                  apiUrl: "https://api.pinto-app.com",
+                  botId: "bot-123",
+                },
+              },
+            },
+          },
+        },
+      } as any);
+
+      expect(
+        JSON.parse((global.fetch as any).mock.calls[0][1].body),
+      ).toMatchObject({
+        chat_id: "efa0609a-chat",
+        media_url: "https://img.example.com/a.png",
+      });
     });
   });
 

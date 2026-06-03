@@ -223,6 +223,15 @@ const normalizeObserverAgentIds = (value: unknown): string[] | undefined => {
 
 const stripPintoPrefix = (id: string) => id.replace(/^pinto:/, "");
 
+const buildPintoApiError = async (res: Response) => {
+  const detail = await res
+    .text()
+    .then((body) => body.trim())
+    .catch(() => "");
+  const detailSuffix = detail ? `: ${detail}` : "";
+  return `Pinto API error: ${res.status} ${res.statusText}${detailSuffix}`;
+};
+
 type PintoReplyPayload = {
   text?: unknown;
   body?: unknown;
@@ -281,7 +290,7 @@ async function sendPintoText(params: {
   });
 
   if (!res.ok) {
-    throw new Error(`Pinto API error: ${res.status} ${res.statusText}`);
+    throw new Error(await buildPintoApiError(res));
   }
 
   return { channel: "pinto", messageId: Date.now().toString() };
@@ -319,7 +328,7 @@ async function sendPintoMedia(params: {
   });
 
   if (!res.ok) {
-    throw new Error(`Pinto API error: ${res.status} ${res.statusText}`);
+    throw new Error(await buildPintoApiError(res));
   }
 
   return { channel: "pinto", messageId: Date.now().toString() };
