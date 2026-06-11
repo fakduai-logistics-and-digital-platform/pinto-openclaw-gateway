@@ -6,10 +6,10 @@ import type {
 import {
   DEFAULT_ACCOUNT_ID,
   buildChannelConfigSchema,
-  registerPluginHttpRoute,
   setAccountEnabledInConfigSection,
-} from "openclaw/plugin-sdk";
-import { applySetupAccountConfigPatch } from "openclaw/plugin-sdk/mattermost";
+} from "openclaw/plugin-sdk/core";
+import { applySetupAccountConfigPatch } from "openclaw/plugin-sdk/setup";
+import { registerPluginHttpRoute } from "openclaw/plugin-sdk/webhook-ingress";
 import { z } from "zod";
 import { PintoWebhookPayload, PintoWebhookReceiveRequest } from "./types.js";
 const stripTrailingSlash = (url: string) => url.replace(/\/+$/, "");
