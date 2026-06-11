@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { registerPluginHttpRoute } from "openclaw/plugin-sdk/webhook-ingress";
 import { pintoPlugin } from "./channel.js";
 
+const flushAsync = () => new Promise<void>((resolve) => setImmediate(resolve));
+
 vi.mock("openclaw/plugin-sdk/webhook-ingress", () => ({
   registerPluginHttpRoute: vi.fn(() => vi.fn()),
 }));
@@ -314,11 +316,13 @@ describe("pintoPlugin", () => {
       vi.mocked(registerPluginHttpRoute).mockReturnValue(vi.fn());
     });
 
-    const startGatewayHarness = () => {
+    const startGatewayHarness = (
+      options: { dispatchReplyWithBufferedBlockDispatcher?: any } = {},
+    ) => {
       const abortController = new AbortController();
-      const dispatchReplyWithBufferedBlockDispatcher = vi
-        .fn()
-        .mockResolvedValue(undefined);
+      const dispatchReplyWithBufferedBlockDispatcher =
+        options.dispatchReplyWithBufferedBlockDispatcher ??
+        vi.fn().mockResolvedValue(undefined);
       const finalizeInboundContext = vi.fn((ctx: any) => ctx);
       const log = {
         debug: vi.fn(),
@@ -542,6 +546,83 @@ describe("pintoPlugin", () => {
         expect.stringContaining('"access_token":"[redacted]"'),
       );
     });
+
+    it("should accept webhook before slow agent dispatch settles and force automatic Pinto delivery", async () => {
+      let resolveDispatch!: () => void;
+      const dispatchReplyWithBufferedBlockDispatcher = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveDispatch = resolve;
+          }),
+      );
+      const harness = startGatewayHarness({
+        dispatchReplyWithBufferedBlockDispatcher,
+      });
+
+      const res = await harness.invoke({
+        bot_id: "bot-123",
+        chat_id: "chat1",
+        message: "hello",
+        user_id: "user1",
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.end).toHaveBeenCalledWith(
+        JSON.stringify({ message: "Message accepted" }),
+      );
+      expect(dispatchReplyWithBufferedBlockDispatcher).toHaveBeenCalledWith(
+        expect.objectContaining({
+          replyOptions: expect.objectContaining({
+            sourceReplyDeliveryMode: "automatic",
+          }),
+        }),
+      );
+
+      resolveDispatch();
+      await flushAsync();
+      await harness.stop();
+    });
+
+    it("should deliver OpenClaw final reply back to Pinto API from webhook dispatch", async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+      const dispatchReplyWithBufferedBlockDispatcher = vi.fn(
+        async ({ dispatcherOptions }) => {
+          await dispatcherOptions.deliver({ text: "agent final reply" });
+        },
+      );
+      const harness = startGatewayHarness({
+        dispatchReplyWithBufferedBlockDispatcher,
+      });
+
+      const res = await harness.invoke({
+        bot_id: "bot-123",
+        chat_id: "chat1",
+        message: "hello",
+        user_id: "user1",
+      });
+      await flushAsync();
+
+      expect(res.statusCode).toBe(200);
+      expect(global.fetch).toHaveBeenCalledWith(
+        "https://api.pinto-app.com/v1/bots/webhook/receive",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "Content-Type": "application/json",
+            "X-Pinto-Secret": "secret123",
+          }),
+        }),
+      );
+      expect(
+        JSON.parse((global.fetch as any).mock.calls[0][1].body),
+      ).toMatchObject({
+        bot_id: "bot-123",
+        chat_id: "chat1",
+        reply_message: "agent final reply",
+      });
+
+      await harness.stop();
+    });
   });
 
   describe("outbound.sendText", () => {
@@ -644,6 +725,24 @@ describe("pintoPlugin", () => {
       ).toMatchObject({
         chat_id: "efa0609a-chat",
       });
+    });
+
+    it("should resolve Pinto chat_id targets for message tool delivery", () => {
+      expect(
+        pintoPlugin.outbound.resolveTarget!({
+          to: "pinto:03b97800-chat",
+          cfg: {},
+        } as any),
+      ).toEqual({
+        ok: true,
+        to: "03b97800-chat",
+      });
+      expect(
+        (pintoPlugin as any).messaging.normalizeTarget("03b97800-chat"),
+      ).toBe("03b97800-chat");
+      expect(
+        (pintoPlugin as any).messaging.normalizeTarget("pinto:03b97800-chat"),
+      ).toBe("03b97800-chat");
     });
   });
 
