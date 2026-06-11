@@ -314,6 +314,87 @@ describe("pintoPlugin", () => {
       vi.mocked(registerPluginHttpRoute).mockReturnValue(vi.fn());
     });
 
+    const startGatewayHarness = () => {
+      const abortController = new AbortController();
+      const dispatchReplyWithBufferedBlockDispatcher = vi
+        .fn()
+        .mockResolvedValue(undefined);
+      const finalizeInboundContext = vi.fn((ctx: any) => ctx);
+      const log = {
+        debug: vi.fn(),
+        error: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+      };
+      const cfg = {
+        channels: {
+          pinto: {
+            accounts: {
+              bot1: {
+                enabled: true,
+                apiUrl: "https://api.pinto-app.com",
+                botId: "bot-123",
+                agentId: "agent-1",
+                webhookSecret: "secret123",
+                webhookPath: "/plugins/pinto/webhook",
+              },
+            },
+          },
+        },
+      };
+
+      const lifecycle = pintoPlugin.gateway!.startAccount({
+        cfg,
+        accountId: "bot1",
+        abortSignal: abortController.signal,
+        log,
+        setStatus: vi.fn(),
+        channelRuntime: {
+          routing: {
+            buildAgentSessionKey: vi.fn(() => "session-1"),
+            resolveAgentRoute: vi.fn(),
+          },
+          reply: {
+            finalizeInboundContext,
+            dispatchReplyWithBufferedBlockDispatcher,
+          },
+        },
+      } as any);
+
+      const route = vi.mocked(registerPluginHttpRoute).mock.calls[0][0];
+      const invoke = async (payload: Record<string, unknown>) => {
+        const req = new EventEmitter() as any;
+        req.method = "POST";
+        req.headers = { "x-pinto-secret": "secret123" };
+        const res = {
+          statusCode: 0,
+          setHeader: vi.fn(),
+          end: vi.fn(),
+        };
+
+        queueMicrotask(() => {
+          req.emit("data", Buffer.from(JSON.stringify(payload)));
+          req.emit("end");
+        });
+
+        await route.handler(req, res as any);
+        return res;
+      };
+
+      const stop = async () => {
+        abortController.abort();
+        await lifecycle;
+      };
+
+      return {
+        dispatchReplyWithBufferedBlockDispatcher,
+        finalizeInboundContext,
+        invoke,
+        log,
+        stop,
+      };
+    };
+
     it("should forward inbound Pinto image_url as OpenClaw media context", async () => {
       const abortController = new AbortController();
       const dispatchReplyWithBufferedBlockDispatcher = vi
@@ -404,6 +485,61 @@ describe("pintoPlugin", () => {
             MediaTypes: ["image/png"],
           }),
         }),
+      );
+    });
+
+    it("should forward inbound Pinto media_url as OpenClaw media context", async () => {
+      const harness = startGatewayHarness();
+
+      const res = await harness.invoke({
+        bot_id: "bot-123",
+        chat_id: "chat1",
+        message: "chat.sentImage",
+        media_url: "https://img.example.com/media.jpg?token=abc",
+        user_id: "user1",
+      });
+      await harness.stop();
+
+      expect(res.statusCode).toBe(200);
+      expect(harness.finalizeInboundContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          BodyForAgent: "chat.sentImage",
+          MediaUrl: "https://img.example.com/media.jpg?token=abc",
+          MediaUrls: ["https://img.example.com/media.jpg?token=abc"],
+          MediaType: "image/jpeg",
+          MediaTypes: ["image/jpeg"],
+        }),
+      );
+      expect(harness.log.info).toHaveBeenCalledWith(
+        expect.stringContaining("media_url"),
+      );
+    });
+
+    it("should log raw Pinto image payload details when no media URL is found", async () => {
+      const harness = startGatewayHarness();
+
+      const res = await harness.invoke({
+        access_token: "do-not-log-me",
+        bot_id: "bot-123",
+        chat_id: "chat1",
+        message: "chat.sentImage",
+        user_id: "user1",
+      });
+      await harness.stop();
+
+      expect(res.statusCode).toBe(200);
+      expect(harness.finalizeInboundContext).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          MediaUrl: expect.any(String),
+        }),
+      );
+      expect(harness.log.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Inbound image payload has no supported media URL",
+        ),
+      );
+      expect(harness.log.warn).toHaveBeenCalledWith(
+        expect.stringContaining('"access_token":"[redacted]"'),
       );
     });
   });
