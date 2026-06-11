@@ -25,6 +25,11 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Verify package artifact
+        run: |
+          TARBALL=$(npm pack)
+          tar -tf "$TARBALL" | grep -qx "package/dist/index.js"
+
       - name: Publish
         run: npm publish --access public
         env:

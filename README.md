@@ -43,6 +43,8 @@ flow การทำงาน:
 openclaw plugins install pinto-app-openclaw
 ```
 
+สำหรับ production ให้ใช้ package/release artifact ที่ build แล้ว เพราะ OpenClaw จะ validate `dist/index.js` ตอนโหลด plugin และไม่ควรต้อง build TypeScript ระหว่าง start runtime.
+
 #### ติดตั้งจาก source ในเครื่อง
 
 ```bash
@@ -630,6 +632,8 @@ Recommended:
 ```bash
 openclaw plugins install pinto-app-openclaw
 ```
+
+For production, install a built package or release artifact. OpenClaw validates `dist/index.js` when loading the plugin and should not need to build TypeScript during runtime startup.
 
 #### Install from local source
 
