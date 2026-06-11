@@ -1,4 +1,4 @@
-import type { IncomingMessage } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type {
   ChannelPlugin,
   PluginRuntime as RuntimeEnv,
@@ -6,10 +6,10 @@ import type {
 import {
   DEFAULT_ACCOUNT_ID,
   buildChannelConfigSchema,
+  registerPluginHttpRoute,
   setAccountEnabledInConfigSection,
-} from "openclaw/plugin-sdk/core";
-import { applySetupAccountConfigPatch } from "openclaw/plugin-sdk/setup";
-import { registerPluginHttpRoute } from "openclaw/plugin-sdk/webhook-ingress";
+} from "openclaw/plugin-sdk";
+import { applySetupAccountConfigPatch } from "openclaw/plugin-sdk/mattermost";
 import { z } from "zod";
 import { PintoWebhookPayload, PintoWebhookReceiveRequest } from "./types.js";
 const stripTrailingSlash = (url: string) => url.replace(/\/+$/, "");
@@ -663,7 +663,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
         replaceExisting: true,
         pluginId: "pinto",
         accountId: ctx.accountId,
-        handler: async (req, res) => {
+        handler: async (req: IncomingMessage, res: ServerResponse) => {
           try {
             if (req.method === "GET") {
               res.statusCode = 200;
