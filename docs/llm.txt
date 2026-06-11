@@ -1,0 +1,141 @@
+# Pinto OpenClaw Gateway
+
+> OpenClaw channel plugin that bridges Pinto Chat with OpenClaw AI agents via webhook routing.
+
+## Package
+
+- npm: `pinto-app-openclaw`
+- Channel ID: `pinto`
+- Plugin ID: `pinto-app-openclaw`
+
+## How It Works
+
+1. User sends a message in Pinto Chat.
+2. Pinto calls the OpenClaw inbound webhook: `POST /plugins/pinto/webhook`
+3. Plugin routes the request to the configured OpenClaw agent.
+4. Plugin delivers the agent's reply back to Pinto: `POST <apiUrl>/v1/bots/webhook/receive`
+
+## Installation
+
+```bash
+openclaw plugins install pinto-app-openclaw
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/fakduai-logistics-and-digital-platform/pinto-openclaw-gateway.git
+cd pinto-openclaw-gateway
+npm install && npm run build
+openclaw plugins install .
+```
+
+## OpenClaw Configuration
+
+Keys under `channels.pinto`:
+
+| Key             | Required | Default                        | Description                              |
+|-----------------|----------|--------------------------------|------------------------------------------|
+| `apiUrl`        | yes      | `https://api.pinto-app.com`    | Pinto API base URL (trailing slash safe) |
+| `botId`         | yes      | —                              | Must match the Pinto bot's `bot_id`      |
+| `agentId`       | no       | —                              | Target OpenClaw agent ID                 |
+| `webhookSecret` | no       | `""`                           | Shared secret for `X-Pinto-Secret`       |
+| `webhookPath`   | no       | `/plugins/pinto/webhook`       | Inbound webhook path                     |
+| `enabled`       | no       | `true`                         | Enable/disable the channel               |
+
+Example:
+
+```json
+{
+  "channels": {
+    "pinto": {
+      "enabled": true,
+      "apiUrl": "https://api.pinto-app.com",
+      "botId": "bot-sales",
+      "agentId": "agent-id",
+      "webhookSecret": "your-secret"
+    }
+  }
+}
+```
+
+## Pinto Side Configuration
+
+- `webhook_url`: `https://your-host.example.com/plugins/pinto/webhook`
+- Use the same `bot_id` value as OpenClaw's `botId`.
+
+## Inbound Webhook Request (Pinto → OpenClaw)
+
+`POST /plugins/pinto/webhook`
+
+```json
+{
+  "bot_id": "bot-sales",
+  "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
+  "message": "hello",
+  "user_id": "a7c3fe36-cf41-42b5-a290-ca98e6129fac",
+  "username": "demo-user"
+}
+```
+
+Optional media fields: `image_url`, `imageUrl`, `media_url`, `mediaUrl`, `attachment`, `file`, `image`, `media`.
+
+## Outbound Reply (OpenClaw → Pinto)
+
+`POST <apiUrl>/v1/bots/webhook/receive`
+
+```json
+{
+  "bot_id": "bot-sales",
+  "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
+  "reply_message": "Hello from OpenClaw",
+  "media_url": "https://example.com/image.png"
+}
+```
+
+## Security
+
+- Set `webhookSecret` on both sides to enable `X-Pinto-Secret` validation.
+- Inbound mismatch returns `401 Unauthorized`.
+- If no secret is configured, inbound validation is skipped.
+
+## Capabilities
+
+- Chat type: `direct` only
+- Media replies: supported (`mediaUrl` / `mediaUrls`)
+- Reactions: not supported
+- Threads: not supported
+- Native commands: not supported
+
+## Multi-Account
+
+Supports multiple bots under one plugin via `channels.pinto.accounts`:
+
+```json
+{
+  "channels": {
+    "pinto": {
+      "defaultAccount": "sales",
+      "accounts": {
+        "sales": { "botId": "bot-sales", "agentId": "agent-1", "webhookSecret": "..." },
+        "support": { "botId": "bot-support", "agentId": "agent-2", "webhookSecret": "..." }
+      }
+    }
+  }
+}
+```
+
+## Common Errors
+
+| Status | Cause                                              |
+|--------|----------------------------------------------------|
+| 400    | Missing `bot_id` or `chat_id` in payload           |
+| 401    | `X-Pinto-Secret` mismatch                          |
+| 403    | `bot_id` not matching any configured account       |
+| 404    | Wrong path or proxy not forwarding correctly       |
+| 500    | Internal error — check OpenClaw logs               |
+
+## Source
+
+- Repository: https://github.com/fakduai-logistics-and-digital-platform/pinto-openclaw-gateway
+- Docs: https://fakduai-logistics-and-digital-platform.github.io/pinto-openclaw-gateway/docs/

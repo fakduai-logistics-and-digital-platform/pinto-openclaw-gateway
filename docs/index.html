@@ -1,55 +1,73 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pinto OpenClaw Gateway — Docs</title>
-    <meta name="description" content="Documentation for the Pinto OpenClaw Gateway plugin, including setup, configuration, security, and deployment guidance." />
+    <meta
+      name="description"
+      content="Documentation for the Pinto OpenClaw Gateway plugin, including setup, configuration, security, and deployment guidance."
+    />
     <meta property="og:title" content="Pinto OpenClaw Gateway Docs" />
-    <meta property="og:description" content="OpenClaw channel plugin for Pinto Chat with webhook routing and secure reply delivery." />
+    <meta
+      property="og:description"
+      content="OpenClaw channel plugin for Pinto Chat with webhook routing and secure reply delivery."
+    />
+    <link
+      rel="alternate"
+      type="text/plain"
+      title="LLM-readable docs"
+      href="llm.txt"
+    />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/atom-one-dark.min.css"
+    />
 
     <style>
       /* ── Pinto Design Tokens ─────────────────────────────────── */
       :root {
-        --color-primary:        #2ECC71;
-        --color-primary-dark:   #27AE60;
+        --color-primary: #2ecc71;
+        --color-primary-dark: #27ae60;
 
-        --color-background:     #F5F5F5;
-        --color-surface:        #FFFFFF;
-        --color-surface-hover:  #F9F9F9;
+        --color-background: #f5f5f5;
+        --color-surface: #ffffff;
+        --color-surface-hover: #f9f9f9;
 
-        --color-text-primary:   #333333;
+        --color-text-primary: #333333;
         --color-text-secondary: #666666;
-        --color-text-tertiary:  #999999;
-        --color-text-disabled:  #BBBBBB;
+        --color-text-tertiary: #999999;
+        --color-text-disabled: #bbbbbb;
 
-        --color-border:         #DDDDDD;
-        --color-border-light:   #E0E0E0;
-        --color-border-subtle:  rgba(46, 38, 61, 0.12);
-        --input-border:         rgba(46, 38, 61, 0.22);
+        --color-border: #dddddd;
+        --color-border-light: #e0e0e0;
+        --color-border-subtle: rgba(46, 38, 61, 0.12);
+        --input-border: rgba(46, 38, 61, 0.22);
 
         --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
-        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.10);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.10);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
         --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
 
-        --rounded-sm:   4px;
-        --rounded-md:   8px;
-        --rounded-lg:   12px;
-        --rounded-xl:   16px;
-        --rounded-2xl:  20px;
+        --rounded-sm: 4px;
+        --rounded-md: 8px;
+        --rounded-lg: 12px;
+        --rounded-xl: 16px;
+        --rounded-2xl: 20px;
         --rounded-full: 9999px;
 
-        --spacing-xs:  4px;
-        --spacing-sm:  8px;
-        --spacing-md:  12px;
-        --spacing-lg:  16px;
-        --spacing-xl:  20px;
+        --spacing-xs: 4px;
+        --spacing-sm: 8px;
+        --spacing-md: 12px;
+        --spacing-lg: 16px;
+        --spacing-xl: 20px;
         --spacing-2xl: 24px;
         --spacing-3xl: 32px;
         --spacing-4xl: 40px;
@@ -60,14 +78,18 @@
         --motion-slow: 300ms ease-in-out;
 
         --nav-width: 260px;
-        --font-body: 'IBM Plex Sans Thai', sans-serif;
-        --code:      'SFMono-Regular', 'SF Mono', Consolas, monospace;
+        --font-body: "IBM Plex Sans Thai", sans-serif;
+        --code: "SFMono-Regular", "SF Mono", Consolas, monospace;
       }
 
       /* ── Reset ───────────────────────────────────────────────── */
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
 
-      html { scroll-behavior: smooth; }
+      html {
+        scroll-behavior: smooth;
+      }
 
       body {
         margin: 0;
@@ -78,9 +100,15 @@
         background-color: var(--color-background);
       }
 
-      a { color: inherit; text-decoration: none; }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
 
-      code, pre { font-family: var(--code); }
+      code,
+      pre {
+        font-family: var(--code);
+      }
 
       /* ── Page layout ─────────────────────────────────────────── */
       .layout {
@@ -196,12 +224,15 @@
 
       .nav-link.active {
         color: var(--color-primary-dark);
-        background: rgba(46, 204, 113, 0.10);
+        background: rgba(46, 204, 113, 0.1);
         font-weight: 500;
       }
 
       /* ── Main ────────────────────────────────────────────────── */
-      main { display: grid; gap: var(--spacing-2xl); }
+      main {
+        display: grid;
+        gap: var(--spacing-2xl);
+      }
 
       /* ── Hero ────────────────────────────────────────────────── */
       .hero {
@@ -215,7 +246,7 @@
 
       /* brand accent bar */
       .hero::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 0;
         left: 0;
@@ -234,7 +265,7 @@
       .eyebrow {
         width: fit-content;
         padding: var(--spacing-xs) var(--spacing-md);
-        background: rgba(46, 204, 113, 0.10);
+        background: rgba(46, 204, 113, 0.1);
         color: var(--color-primary-dark);
         border: 1px solid rgba(46, 204, 113, 0.22);
         border-radius: var(--rounded-full);
@@ -269,7 +300,9 @@
         gap: var(--spacing-md);
       }
 
-      .hero-actions { grid-template-columns: repeat(2, max-content); }
+      .hero-actions {
+        grid-template-columns: repeat(2, max-content);
+      }
 
       /* ── Buttons ─────────────────────────────────────────────── */
       .button {
@@ -298,7 +331,9 @@
         border-color: var(--color-primary-dark);
       }
 
-      .button.primary:active { transform: scale(0.98); }
+      .button.primary:active {
+        transform: scale(0.98);
+      }
 
       .button.secondary {
         background: var(--color-surface);
@@ -306,10 +341,14 @@
         border-color: var(--color-border-subtle);
       }
 
-      .button.secondary:hover { background: var(--color-surface-hover); }
+      .button.secondary:hover {
+        background: var(--color-surface-hover);
+      }
 
       /* ── Hero stats ──────────────────────────────────────────── */
-      .hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .hero-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
 
       .stat {
         padding: var(--spacing-lg);
@@ -360,11 +399,23 @@
       }
 
       /* ── Grids ───────────────────────────────────────────────── */
-      .grid-3   { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .mini-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .mini-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
 
-      .stack-list { display: flex; flex-direction: column; gap: var(--spacing-lg); }
-      .stack-card { display: flex; flex-direction: column; gap: var(--spacing-md); }
+      .stack-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-lg);
+      }
+      .stack-card {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+      }
 
       /* ── Cards ───────────────────────────────────────────────── */
       .card {
@@ -375,7 +426,9 @@
         transition: box-shadow var(--motion-base);
       }
 
-      .card:hover { box-shadow: var(--shadow-xs); }
+      .card:hover {
+        box-shadow: var(--shadow-xs);
+      }
 
       .card h4 {
         margin: 0 0 var(--spacing-sm);
@@ -410,7 +463,10 @@
       }
 
       /* ── Inline code ─────────────────────────────────────────── */
-      p code, li code, td code, h4 code {
+      p code,
+      li code,
+      td code,
+      h4 code {
         font-family: var(--code);
         font-size: 13px;
         background: rgba(46, 38, 61, 0.05);
@@ -431,7 +487,7 @@
       .callout {
         padding: var(--spacing-lg);
         background: rgba(46, 204, 113, 0.05);
-        border: 1px solid rgba(46, 204, 113, 0.20);
+        border: 1px solid rgba(46, 204, 113, 0.2);
         border-radius: var(--rounded-lg);
         display: flex;
         flex-direction: column;
@@ -448,7 +504,9 @@
         margin-top: var(--spacing-md);
       }
 
-      .callout strong:first-child { margin-top: 0; }
+      .callout strong:first-child {
+        margin-top: 0;
+      }
 
       .callout span {
         font-size: 14px;
@@ -473,7 +531,10 @@
         background: rgba(0, 0, 0, 0.18);
       }
 
-      .code-dots { display: inline-flex; gap: 6px; }
+      .code-dots {
+        display: inline-flex;
+        gap: 6px;
+      }
 
       .code-dots span {
         width: 9px;
@@ -482,9 +543,15 @@
         background: rgba(255, 255, 255, 0.14);
       }
 
-      .code-dots span:nth-child(1) { background: #FF6B6B; }
-      .code-dots span:nth-child(2) { background: #FFB400; }
-      .code-dots span:nth-child(3) { background: #2ECC71; }
+      .code-dots span:nth-child(1) {
+        background: #ff6b6b;
+      }
+      .code-dots span:nth-child(2) {
+        background: #ffb400;
+      }
+      .code-dots span:nth-child(3) {
+        background: #2ecc71;
+      }
 
       .code-label {
         margin-left: auto;
@@ -492,15 +559,15 @@
         font-size: 11px;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.30);
+        color: rgba(255, 255, 255, 0.3);
       }
 
       .copy-button {
         padding: 4px var(--spacing-sm);
-        border: 1px solid rgba(255, 255, 255, 0.10);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: var(--rounded-sm);
         background: rgba(255, 255, 255, 0.05);
-        color: rgba(255, 255, 255, 0.40);
+        color: rgba(255, 255, 255, 0.4);
         font-family: var(--font-body);
         font-size: 12px;
         cursor: pointer;
@@ -518,10 +585,13 @@
         padding: var(--spacing-lg);
         overflow-x: auto;
         background: transparent;
-        scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+        scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
       }
 
-      .code-block code.hljs { padding: 0; background: transparent; }
+      .code-block code.hljs {
+        padding: 0;
+        background: transparent;
+      }
 
       .code-block code {
         display: block;
@@ -560,9 +630,13 @@
         background: var(--color-background);
       }
 
-      .table td { color: var(--color-text-secondary); }
+      .table td {
+        color: var(--color-text-secondary);
+      }
 
-      .table tr:last-child td { border-bottom: 0; }
+      .table tr:last-child td {
+        border-bottom: 0;
+      }
 
       /* ── Footer ──────────────────────────────────────────────── */
       .footer {
@@ -575,13 +649,21 @@
 
       /* ── Responsive ──────────────────────────────────────────── */
       @media (max-width: 1100px) {
-        .layout { grid-template-columns: 1fr; }
-        .sidebar { position: static; }
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          position: static;
+        }
       }
 
       @media (max-width: 800px) {
-        .hero  { padding: var(--spacing-2xl); }
-        .panel { padding: var(--spacing-2xl); }
+        .hero {
+          padding: var(--spacing-2xl);
+        }
+        .panel {
+          padding: var(--spacing-2xl);
+        }
 
         .hero-actions,
         .hero-stats,
@@ -605,47 +687,157 @@
         <div class="brand">
           <span class="brand-badge">Docs</span>
           <h1>Pinto OpenClaw Gateway</h1>
-          <p data-i18n="brand_desc">OpenClaw channel plugin for Pinto Chat with webhook routing and secure reply delivery.</p>
+          <p data-i18n="brand_desc">
+            OpenClaw channel plugin for Pinto Chat with webhook routing and
+            secure reply delivery.
+          </p>
           <div class="lang-switch" role="group" aria-label="Language switcher">
-            <button class="lang-button active" type="button" data-lang-value="en">EN</button>
-            <button class="lang-button" type="button" data-lang-value="th">TH</button>
+            <button
+              class="lang-button active"
+              type="button"
+              data-lang-value="en"
+            >
+              EN
+            </button>
+            <button class="lang-button" type="button" data-lang-value="th">
+              TH
+            </button>
           </div>
         </div>
 
         <nav aria-label="Primary">
           <div class="nav-group">
-            <span class="nav-title" data-i18n="nav_group_overview">Overview</span>
-            <a class="nav-link" href="#overview" data-i18n="nav_overview">Overview</a>
-            <a class="nav-link" href="#features" data-i18n="nav_features">Features</a>
-            <a class="nav-link" href="#requirements" data-i18n="nav_requirements">Requirements</a>
+            <span class="nav-title" data-i18n="nav_group_overview"
+              >Overview</span
+            >
+            <a class="nav-link" href="#overview" data-i18n="nav_overview"
+              >Overview</a
+            >
+            <a class="nav-link" href="#features" data-i18n="nav_features"
+              >Features</a
+            >
+            <a
+              class="nav-link"
+              href="#requirements"
+              data-i18n="nav_requirements"
+              >Requirements</a
+            >
           </div>
           <div class="nav-group">
             <span class="nav-title" data-i18n="nav_group_setup">Setup</span>
-            <a class="nav-link" href="#installation" data-i18n="nav_installation">Installation</a>
-            <a class="nav-link" href="#openclaw-config" data-i18n="nav_openclaw">OpenClaw Config</a>
-            <a class="nav-link" href="#pinto-config" data-i18n="nav_pinto">Pinto Config</a>
-            <a class="nav-link" href="#recommended-flow" data-i18n="nav_flow">Recommended Flow</a>
+            <a
+              class="nav-link"
+              href="#installation"
+              data-i18n="nav_installation"
+              >Installation</a
+            >
+            <a class="nav-link" href="#openclaw-config" data-i18n="nav_openclaw"
+              >OpenClaw Config</a
+            >
+            <a class="nav-link" href="#pinto-config" data-i18n="nav_pinto"
+              >Pinto Config</a
+            >
+            <a class="nav-link" href="#recommended-flow" data-i18n="nav_flow"
+              >Recommended Flow</a
+            >
           </div>
           <div class="nav-group">
-            <span class="nav-title" data-i18n="nav_group_reference">Reference</span>
-            <a class="nav-link" href="#security" data-i18n="nav_security">Webhook Secret</a>
-            <a class="nav-link" href="#endpoints" data-i18n="nav_endpoints">Endpoints</a>
-            <a class="nav-link" href="#testing" data-i18n="nav_testing">Testing</a>
-            <a class="nav-link" href="#troubleshooting" data-i18n="nav_troubleshooting">Troubleshooting</a>
+            <span class="nav-title" data-i18n="nav_group_reference"
+              >Reference</span
+            >
+            <a class="nav-link" href="#security" data-i18n="nav_security"
+              >Webhook Secret</a
+            >
+            <a class="nav-link" href="#endpoints" data-i18n="nav_endpoints"
+              >Endpoints</a
+            >
+            <a class="nav-link" href="#testing" data-i18n="nav_testing"
+              >Testing</a
+            >
+            <a
+              class="nav-link"
+              href="#troubleshooting"
+              data-i18n="nav_troubleshooting"
+              >Troubleshooting</a
+            >
           </div>
         </nav>
+
+        <div
+          style="
+            margin-top: var(--spacing-2xl);
+            padding-top: var(--spacing-lg);
+            border-top: 1px solid var(--color-border-light);
+          "
+        >
+          <a
+            href="llm.txt"
+            target="_blank"
+            rel="noopener"
+            style="
+              display: flex;
+              align-items: center;
+              gap: var(--spacing-sm);
+              padding: var(--spacing-sm) var(--spacing-md);
+              border-radius: var(--rounded-md);
+              font-size: 13px;
+              color: var(--color-text-tertiary);
+              transition: all var(--motion-fast);
+            "
+            onmouseover="
+              this.style.color = 'var(--color-text-primary)';
+              this.style.background = 'var(--color-surface-hover)';
+            "
+            onmouseout="
+              this.style.color = 'var(--color-text-tertiary)';
+              this.style.background = '';
+            "
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+              />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            <span data-i18n="nav_llm">llm.txt</span>
+          </a>
+        </div>
       </aside>
 
       <main>
         <section class="hero">
           <div class="hero-content">
-            <span class="eyebrow" data-i18n="hero_eyebrow">SaaS-style docs</span>
-            <h2 data-i18n="hero_title">Connect Pinto Chat to OpenClaw with a clean webhook bridge.</h2>
+            <span class="eyebrow" data-i18n="hero_eyebrow"
+              >SaaS-style docs</span
+            >
+            <h2 data-i18n="hero_title">
+              Connect Pinto Chat to OpenClaw with a clean webhook bridge.
+            </h2>
             <p data-i18n="hero_desc">
-              This plugin receives inbound Pinto events, hands them off to an OpenClaw agent, and sends final replies back to Pinto. The page below is a production-ready static docs site for GitHub Pages.
+              This plugin receives inbound Pinto events, hands them off to an
+              OpenClaw agent, and sends final replies back to Pinto. The page
+              below is a production-ready static docs site for GitHub Pages.
             </p>
             <div class="hero-actions">
-              <a class="button primary" href="#installation" data-i18n="hero_cta_start">Get Started</a>
+              <a
+                class="button primary"
+                href="#installation"
+                data-i18n="hero_cta_start"
+                >Get Started</a
+              >
               <a
                 class="button secondary"
                 href="https://github.com/fakduai-logistics-and-digital-platform/pinto-openclaw-gateway"
@@ -657,15 +849,21 @@
             <div class="hero-stats">
               <div class="stat">
                 <strong data-i18n="stat_bridge_title">Webhook Bridge</strong>
-                <span data-i18n="stat_bridge_desc">Pinto inbound to OpenClaw outbound routing.</span>
+                <span data-i18n="stat_bridge_desc"
+                  >Pinto inbound to OpenClaw outbound routing.</span
+                >
               </div>
               <div class="stat">
                 <strong data-i18n="stat_secret_title">Shared Secret</strong>
-                <span data-i18n="stat_secret_desc">Supports `X-Pinto-Secret` on both directions.</span>
+                <span data-i18n="stat_secret_desc"
+                  >Supports `X-Pinto-Secret` on both directions.</span
+                >
               </div>
               <div class="stat">
                 <strong data-i18n="stat_deploy_title">Deployable</strong>
-                <span data-i18n="stat_deploy_desc">Static HTML ready for GitHub Pages.</span>
+                <span data-i18n="stat_deploy_desc"
+                  >Static HTML ready for GitHub Pages.</span
+                >
               </div>
             </div>
           </div>
@@ -674,15 +872,27 @@
         <section class="panel" id="overview">
           <div class="section-head">
             <h3 data-i18n="overview_title">Overview</h3>
-            <p data-i18n="overview_desc">High-level flow for the plugin and how it fits inside your OpenClaw deployment.</p>
+            <p data-i18n="overview_desc">
+              High-level flow for the plugin and how it fits inside your
+              OpenClaw deployment.
+            </p>
           </div>
           <div class="split">
             <div class="plain">
               <ol class="steps">
-                <li data-i18n="overview_step_1">User sends a message in Pinto.</li>
-                <li data-i18n="overview_step_2">Pinto calls the OpenClaw webhook at /plugins/pinto/webhook.</li>
-                <li data-i18n="overview_step_3">The plugin forwards the request to an OpenClaw agent.</li>
-                <li data-i18n="overview_step_4">The plugin posts the final reply back to Pinto with POST /v1/bots/webhook/receive.</li>
+                <li data-i18n="overview_step_1">
+                  User sends a message in Pinto.
+                </li>
+                <li data-i18n="overview_step_2">
+                  Pinto calls the OpenClaw webhook at /plugins/pinto/webhook.
+                </li>
+                <li data-i18n="overview_step_3">
+                  The plugin forwards the request to an OpenClaw agent.
+                </li>
+                <li data-i18n="overview_step_4">
+                  The plugin posts the final reply back to Pinto with POST
+                  /v1/bots/webhook/receive.
+                </li>
               </ol>
             </div>
             <div class="callout">
@@ -697,20 +907,31 @@
         <section class="panel" id="features">
           <div class="section-head">
             <h3 data-i18n="features_title">Features</h3>
-            <p data-i18n="features_desc">Core behavior included in the current implementation.</p>
+            <p data-i18n="features_desc">
+              Core behavior included in the current implementation.
+            </p>
           </div>
           <div class="grid-3">
             <article class="card">
               <h4 data-i18n="feature_1_title">Direct Chat Support</h4>
-              <p data-i18n="feature_1_desc">Receives Pinto chat events and forwards them into an OpenClaw agent pipeline.</p>
+              <p data-i18n="feature_1_desc">
+                Receives Pinto chat events and forwards them into an OpenClaw
+                agent pipeline.
+              </p>
             </article>
             <article class="card">
               <h4 data-i18n="feature_2_title">Media Reply Support</h4>
-              <p data-i18n="feature_2_desc">Supports outbound replies with optional media_url when the agent returns rich content.</p>
+              <p data-i18n="feature_2_desc">
+                Supports outbound replies with optional media_url when the agent
+                returns rich content.
+              </p>
             </article>
             <article class="card">
               <h4 data-i18n="feature_3_title">Shared Secret Validation</h4>
-              <p data-i18n="feature_3_desc">Handles inbound and outbound X-Pinto-Secret headers to enforce webhook trust.</p>
+              <p data-i18n="feature_3_desc">
+                Handles inbound and outbound X-Pinto-Secret headers to enforce
+                webhook trust.
+              </p>
             </article>
           </div>
         </section>
@@ -718,7 +939,9 @@
         <section class="panel" id="requirements">
           <div class="section-head">
             <h3 data-i18n="requirements_title">Requirements</h3>
-            <p data-i18n="requirements_desc">Environment and data you need before installation.</p>
+            <p data-i18n="requirements_desc">
+              Environment and data you need before installation.
+            </p>
           </div>
           <div class="mini-grid">
             <div class="card plain">
@@ -741,29 +964,40 @@
         <section class="panel" id="installation">
           <div class="section-head">
             <h3 data-i18n="installation_title">Installation</h3>
-            <p data-i18n="installation_desc">Recommended package install, local source install, and manual deployment.</p>
+            <p data-i18n="installation_desc">
+              Recommended package install, local source install, and manual
+              deployment.
+            </p>
           </div>
           <div class="stack-list">
             <article class="card stack-card">
               <h4>Package Name</h4>
               <div class="code-shell">
                 <div class="code-toolbar">
-                  <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                  <span class="code-dots" aria-hidden="true"
+                    ><span></span><span></span><span></span
+                  ></span>
                   <span class="code-label">bash</span>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
-                <pre class="code-block wrap"><code class="language-bash">openclaw plugins install pinto-app-openclaw</code></pre>
+                <pre
+                  class="code-block wrap"
+                ><code class="language-bash">openclaw plugins install pinto-app-openclaw</code></pre>
               </div>
             </article>
             <article class="card stack-card">
               <h4>From Source</h4>
               <div class="code-shell">
                 <div class="code-toolbar">
-                  <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                  <span class="code-dots" aria-hidden="true"
+                    ><span></span><span></span><span></span
+                  ></span>
                   <span class="code-label">bash</span>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
-                <pre class="code-block"><code class="language-bash">git clone https://github.com/fakduai-logistics-and-digital-platform/pinto-openclaw-gateway.git
+                <pre
+                  class="code-block"
+                ><code class="language-bash">git clone https://github.com/fakduai-logistics-and-digital-platform/pinto-openclaw-gateway.git
 cd pinto-openclaw-gateway
 npm install
 npm run build
@@ -785,7 +1019,10 @@ openclaw plugins install .</code></pre>
         <section class="panel" id="openclaw-config">
           <div class="section-head">
             <h3 data-i18n="openclaw_title">OpenClaw Config</h3>
-            <p data-i18n="openclaw_desc">Configure via the OpenClaw UI at Channels > Pinto Chat or through the config file.</p>
+            <p data-i18n="openclaw_desc">
+              Configure via the OpenClaw UI at Channels > Pinto Chat or through
+              the config file.
+            </p>
           </div>
           <table class="table" aria-label="OpenClaw configuration">
             <thead>
@@ -809,13 +1046,18 @@ openclaw plugins install .</code></pre>
               </tr>
               <tr>
                 <td><code>Webhook Secret</code></td>
-                <td>Optional shared secret used in the <code>X-Pinto-Secret</code> header. It is empty by default.</td>
+                <td>
+                  Optional shared secret used in the
+                  <code>X-Pinto-Secret</code> header. It is empty by default.
+                </td>
               </tr>
             </tbody>
           </table>
           <div class="code-shell" style="margin-top: 18px">
             <div class="code-toolbar">
-              <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+              <span class="code-dots" aria-hidden="true"
+                ><span></span><span></span><span></span
+              ></span>
               <span class="code-label">json</span>
               <button class="copy-button" type="button">Copy</button>
             </div>
@@ -835,16 +1077,23 @@ openclaw plugins install .</code></pre>
         <section class="panel" id="pinto-config">
           <div class="section-head">
             <h3 data-i18n="pinto_title">Pinto Config</h3>
-            <p data-i18n="pinto_desc">Fields Pinto needs so it can call OpenClaw correctly.</p>
+            <p data-i18n="pinto_desc">
+              Fields Pinto needs so it can call OpenClaw correctly.
+            </p>
           </div>
           <div class="mini-grid">
             <article class="card plain">
               <h4><code>webhook_url</code></h4>
-              <p><code>https://your-host.example.com/plugins/pinto/webhook</code></p>
+              <p>
+                <code>https://your-host.example.com/plugins/pinto/webhook</code>
+              </p>
             </article>
             <article class="card plain">
               <h4>Bot ID</h4>
-              <p>Use the Pinto bot <code>bot_id</code> as the OpenClaw <code>Bot Id</code>.</p>
+              <p>
+                Use the Pinto bot <code>bot_id</code> as the OpenClaw
+                <code>Bot Id</code>.
+              </p>
             </article>
           </div>
         </section>
@@ -857,30 +1106,49 @@ openclaw plugins install .</code></pre>
           <ol class="steps">
             <li>Install the plugin.</li>
             <li>Restart OpenClaw or reload plugins.</li>
-            <li>Fill in <code>Api Url</code>, <code>Bot Id</code>, and <code>Webhook Secret</code>.</li>
-            <li>Set Pinto <code>webhook_url</code> to <code>/plugins/pinto/webhook</code>.</li>
+            <li>
+              Fill in <code>Api Url</code>, <code>Bot Id</code>, and
+              <code>Webhook Secret</code>.
+            </li>
+            <li>
+              Set Pinto <code>webhook_url</code> to
+              <code>/plugins/pinto/webhook</code>.
+            </li>
             <li>Test the webhook with <code>curl</code>.</li>
-            <li>Send a real message from Pinto and verify the reply returns.</li>
+            <li>
+              Send a real message from Pinto and verify the reply returns.
+            </li>
           </ol>
         </section>
 
         <section class="panel" id="security">
           <div class="section-head">
             <h3 data-i18n="security_title">Webhook Secret</h3>
-            <p data-i18n="security_desc">The plugin supports shared-secret validation in both directions.</p>
+            <p data-i18n="security_desc">
+              The plugin supports shared-secret validation in both directions.
+            </p>
           </div>
           <div class="grid-3">
             <article class="card plain">
               <h4>Inbound</h4>
-              <p>Pinto must include <code>X-Pinto-Secret</code> when OpenClaw config sets a secret. Mismatch returns <code>401 Unauthorized</code>.</p>
+              <p>
+                Pinto must include <code>X-Pinto-Secret</code> when OpenClaw
+                config sets a secret. Mismatch returns
+                <code>401 Unauthorized</code>.
+              </p>
             </article>
             <article class="card plain">
               <h4>Outbound</h4>
-              <p>Replies back to Pinto automatically include <code>X-Pinto-Secret</code> when configured.</p>
+              <p>
+                Replies back to Pinto automatically include
+                <code>X-Pinto-Secret</code> when configured.
+              </p>
             </article>
             <article class="card plain">
               <h4>Optional</h4>
-              <p>If no secret is configured, inbound validation is not enforced.</p>
+              <p>
+                If no secret is configured, inbound validation is not enforced.
+              </p>
             </article>
           </div>
         </section>
@@ -888,22 +1156,30 @@ openclaw plugins install .</code></pre>
         <section class="panel" id="endpoints">
           <div class="section-head">
             <h3 data-i18n="endpoints_title">Endpoints</h3>
-            <p data-i18n="endpoints_desc">Inbound and outbound API calls used by the gateway.</p>
+            <p data-i18n="endpoints_desc">
+              Inbound and outbound API calls used by the gateway.
+            </p>
           </div>
           <div class="stack-list">
             <article class="card stack-card">
               <h4>Inbound Webhook</h4>
               <div class="code-shell">
                 <div class="code-toolbar">
-                  <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                  <span class="code-dots" aria-hidden="true"
+                    ><span></span><span></span><span></span
+                  ></span>
                   <span class="code-label">http</span>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
-                <pre class="code-block wrap"><code class="language-http">POST /plugins/pinto/webhook</code></pre>
+                <pre
+                  class="code-block wrap"
+                ><code class="language-http">POST /plugins/pinto/webhook</code></pre>
               </div>
               <div class="code-shell">
                 <div class="code-toolbar">
-                  <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                  <span class="code-dots" aria-hidden="true"
+                    ><span></span><span></span><span></span
+                  ></span>
                   <span class="code-label">json</span>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
@@ -920,15 +1196,21 @@ openclaw plugins install .</code></pre>
               <h4>Outbound Reply</h4>
               <div class="code-shell">
                 <div class="code-toolbar">
-                  <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                  <span class="code-dots" aria-hidden="true"
+                    ><span></span><span></span><span></span
+                  ></span>
                   <span class="code-label">http</span>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
-                <pre class="code-block wrap"><code class="language-http">POST &lt;apiUrl&gt;/v1/bots/webhook/receive</code></pre>
+                <pre
+                  class="code-block wrap"
+                ><code class="language-http">POST &lt;apiUrl&gt;/v1/bots/webhook/receive</code></pre>
               </div>
               <div class="code-shell">
                 <div class="code-toolbar">
-                  <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                  <span class="code-dots" aria-hidden="true"
+                    ><span></span><span></span><span></span
+                  ></span>
                   <span class="code-label">json</span>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
@@ -946,18 +1228,25 @@ openclaw plugins install .</code></pre>
         <section class="panel" id="testing">
           <div class="section-head">
             <h3 data-i18n="testing_title">Testing</h3>
-            <p data-i18n="testing_desc">Smoke-test the integration locally, publicly, and directly against Pinto.</p>
+            <p data-i18n="testing_desc">
+              Smoke-test the integration locally, publicly, and directly against
+              Pinto.
+            </p>
           </div>
           <div class="stack-list">
             <article class="card stack-card">
               <h4>Local Inbound</h4>
               <div class="code-shell">
                 <div class="code-toolbar">
-                  <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                  <span class="code-dots" aria-hidden="true"
+                    ><span></span><span></span><span></span
+                  ></span>
                   <span class="code-label">bash</span>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
-                <pre class="code-block"><code class="language-bash">curl -i -X POST http://127.0.0.1:18789/plugins/pinto/webhook \
+                <pre
+                  class="code-block"
+                ><code class="language-bash">curl -i -X POST http://127.0.0.1:18789/plugins/pinto/webhook \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
@@ -972,11 +1261,15 @@ openclaw plugins install .</code></pre>
               <h4>Public Inbound</h4>
               <div class="code-shell">
                 <div class="code-toolbar">
-                  <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                  <span class="code-dots" aria-hidden="true"
+                    ><span></span><span></span><span></span
+                  ></span>
                   <span class="code-label">bash</span>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
-                <pre class="code-block"><code class="language-bash">curl -i -X POST https://your-host.example.com/plugins/pinto/webhook \
+                <pre
+                  class="code-block"
+                ><code class="language-bash">curl -i -X POST https://your-host.example.com/plugins/pinto/webhook \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{ ... }'</code></pre>
@@ -986,11 +1279,15 @@ openclaw plugins install .</code></pre>
               <h4>Pinto Outbound</h4>
               <div class="code-shell">
                 <div class="code-toolbar">
-                  <span class="code-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+                  <span class="code-dots" aria-hidden="true"
+                    ><span></span><span></span><span></span
+                  ></span>
                   <span class="code-label">bash</span>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
-                <pre class="code-block"><code class="language-bash">curl -i -X POST https://api-dev.pinto-app.com/v1/bots/webhook/receive \
+                <pre
+                  class="code-block"
+                ><code class="language-bash">curl -i -X POST https://api-dev.pinto-app.com/v1/bots/webhook/receive \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
@@ -1006,13 +1303,17 @@ openclaw plugins install .</code></pre>
         <section class="panel" id="troubleshooting">
           <div class="section-head">
             <h3 data-i18n="troubleshooting_title">Troubleshooting</h3>
-            <p data-i18n="troubleshooting_desc">Most common integration problems and what they usually mean.</p>
+            <p data-i18n="troubleshooting_desc">
+              Most common integration problems and what they usually mean.
+            </p>
           </div>
           <div class="grid-3">
             <article class="card plain">
               <h4>404 Not Found</h4>
               <ul class="check-list">
-                <li>Request used <code>GET</code> instead of <code>POST</code></li>
+                <li>
+                  Request used <code>GET</code> instead of <code>POST</code>
+                </li>
                 <li>Reverse proxy or tunnel is not forwarding correctly</li>
                 <li>Path is not <code>/plugins/pinto/webhook</code></li>
               </ul>
@@ -1043,16 +1344,35 @@ openclaw plugins install .</code></pre>
           </div>
           <div class="card plain">
             <ul class="check-list">
-              <li>ติดตั้งด้วย <code>openclaw plugins install pinto-app-openclaw</code></li>
-              <li>ตั้งค่า <code>Api Url</code>, <code>Bot Id</code>, และ <code>Webhook Secret</code> ใน OpenClaw</li>
-              <li>ตั้ง <code>webhook_url</code> ฝั่ง Pinto ให้ชี้มาที่ <code>/plugins/pinto/webhook</code></li>
-              <li>ถ้ามี secret ทั้ง Pinto และ OpenClaw ต้องใช้ค่า <code>X-Pinto-Secret</code> ตรงกัน</li>
+              <li>
+                ติดตั้งด้วย
+                <code>openclaw plugins install pinto-app-openclaw</code>
+              </li>
+              <li>
+                ตั้งค่า <code>Api Url</code>, <code>Bot Id</code>, และ
+                <code>Webhook Secret</code> ใน OpenClaw
+              </li>
+              <li>
+                ตั้ง <code>webhook_url</code> ฝั่ง Pinto ให้ชี้มาที่
+                <code>/plugins/pinto/webhook</code>
+              </li>
+              <li>
+                ถ้ามี secret ทั้ง Pinto และ OpenClaw ต้องใช้ค่า
+                <code>X-Pinto-Secret</code> ตรงกัน
+              </li>
               <li>ทดสอบด้วย <code>curl</code> ก่อนส่งข้อความจริง</li>
             </ul>
           </div>
         </section>
 
-        <p class="footer" data-i18n="footer_text">Static docs for GitHub Pages. Source of truth for full bilingual content remains in README.md.</p>
+        <p class="footer" data-i18n="footer_text">
+          Static docs for GitHub Pages. Source of truth for full bilingual
+          content remains in README.md.
+        </p>
+        <p class="footer">
+          AI agents:
+          <a href="llm.txt" style="color: var(--color-primary-dark)">llm.txt</a>
+        </p>
       </main>
     </div>
 
@@ -1063,7 +1383,8 @@ openclaw plugins install .</code></pre>
     <script>
       const translations = {
         en: {
-          brand_desc: "OpenClaw channel plugin for Pinto Chat with webhook routing and secure reply delivery.",
+          brand_desc:
+            "OpenClaw channel plugin for Pinto Chat with webhook routing and secure reply delivery.",
           nav_group_overview: "Overview",
           nav_overview: "Overview",
           nav_features: "Features",
@@ -1079,7 +1400,8 @@ openclaw plugins install .</code></pre>
           nav_testing: "Testing",
           nav_troubleshooting: "Troubleshooting",
           hero_eyebrow: "SaaS-style docs",
-          hero_title: "Connect Pinto Chat to OpenClaw with a clean webhook bridge.",
+          hero_title:
+            "Connect Pinto Chat to OpenClaw with a clean webhook bridge.",
           hero_desc:
             "This plugin receives inbound Pinto events, hands them off to an OpenClaw agent, and sends final replies back to Pinto. The page below is a production-ready static docs site for GitHub Pages.",
           hero_cta_start: "Get Started",
@@ -1091,44 +1413,60 @@ openclaw plugins install .</code></pre>
           stat_deploy_title: "Deployable",
           stat_deploy_desc: "Static HTML ready for GitHub Pages.",
           overview_title: "Overview",
-          overview_desc: "High-level flow for the plugin and how it fits inside your OpenClaw deployment.",
+          overview_desc:
+            "High-level flow for the plugin and how it fits inside your OpenClaw deployment.",
           overview_step_1: "User sends a message in Pinto.",
-          overview_step_2: "Pinto calls the OpenClaw webhook at /plugins/pinto/webhook.",
-          overview_step_3: "The plugin forwards the request to an OpenClaw agent.",
-          overview_step_4: "The plugin posts the final reply back to Pinto with POST /v1/bots/webhook/receive.",
+          overview_step_2:
+            "Pinto calls the OpenClaw webhook at /plugins/pinto/webhook.",
+          overview_step_3:
+            "The plugin forwards the request to an OpenClaw agent.",
+          overview_step_4:
+            "The plugin posts the final reply back to Pinto with POST /v1/bots/webhook/receive.",
           callout_package: "Package",
           callout_channel: "Channel ID",
           features_title: "Features",
-          features_desc: "Core behavior included in the current implementation.",
+          features_desc:
+            "Core behavior included in the current implementation.",
           feature_1_title: "Direct Chat Support",
-          feature_1_desc: "Receives Pinto chat events and forwards them into an OpenClaw agent pipeline.",
+          feature_1_desc:
+            "Receives Pinto chat events and forwards them into an OpenClaw agent pipeline.",
           feature_2_title: "Media Reply Support",
-          feature_2_desc: "Supports outbound replies with optional media_url when the agent returns rich content.",
+          feature_2_desc:
+            "Supports outbound replies with optional media_url when the agent returns rich content.",
           feature_3_title: "Shared Secret Validation",
-          feature_3_desc: "Handles inbound and outbound X-Pinto-Secret headers to enforce webhook trust.",
+          feature_3_desc:
+            "Handles inbound and outbound X-Pinto-Secret headers to enforce webhook trust.",
           requirements_title: "Requirements",
-          requirements_desc: "Environment and data you need before installation.",
+          requirements_desc:
+            "Environment and data you need before installation.",
           installation_title: "Installation",
-          installation_desc: "Recommended package install, local source install, and manual deployment.",
+          installation_desc:
+            "Recommended package install, local source install, and manual deployment.",
           openclaw_title: "OpenClaw Config",
-          openclaw_desc: "Configure via the OpenClaw UI at Channels > Pinto Chat or through the config file.",
+          openclaw_desc:
+            "Configure via the OpenClaw UI at Channels > Pinto Chat or through the config file.",
           pinto_title: "Pinto Config",
           pinto_desc: "Fields Pinto needs so it can call OpenClaw correctly.",
           flow_title: "Recommended Flow",
           flow_desc: "Minimal path to a working integration.",
           security_title: "Webhook Secret",
-          security_desc: "The plugin supports shared-secret validation in both directions.",
+          security_desc:
+            "The plugin supports shared-secret validation in both directions.",
           endpoints_title: "Endpoints",
           endpoints_desc: "Inbound and outbound API calls used by the gateway.",
           testing_title: "Testing",
-          testing_desc: "Smoke-test the integration locally, publicly, and directly against Pinto.",
+          testing_desc:
+            "Smoke-test the integration locally, publicly, and directly against Pinto.",
           troubleshooting_title: "Troubleshooting",
-          troubleshooting_desc: "Most common integration problems and what they usually mean.",
-          footer_text: "Static docs for GitHub Pages. Source of truth for full bilingual content remains in README.md.",
-          nav_llm: "llm.txt — for AI agents"
+          troubleshooting_desc:
+            "Most common integration problems and what they usually mean.",
+          footer_text:
+            "Static docs for GitHub Pages. Source of truth for full bilingual content remains in README.md.",
+          nav_llm: "llm.txt — for AI agents",
         },
         th: {
-          brand_desc: "ปลั๊กอิน OpenClaw channel สำหรับ Pinto Chat ใช้รับ webhook และส่งข้อความตอบกลับอย่างปลอดภัย",
+          brand_desc:
+            "ปลั๊กอิน OpenClaw channel สำหรับ Pinto Chat ใช้รับ webhook และส่งข้อความตอบกลับอย่างปลอดภัย",
           nav_group_overview: "ภาพรวม",
           nav_overview: "ภาพรวม",
           nav_features: "ความสามารถ",
@@ -1143,8 +1481,9 @@ openclaw plugins install .</code></pre>
           nav_endpoints: "Endpoints",
           nav_testing: "การทดสอบ",
           nav_troubleshooting: "แก้ปัญหา",
-          hero_eyebrow: "เอกสารสไตล์ SaaS",
-          hero_title: "เชื่อม Pinto Chat เข้ากับ OpenClaw ด้วย webhook gateway ที่ชัดเจนและใช้งานจริงได้",
+          hero_eyebrow: "เอกสาร",
+          hero_title:
+            "เชื่อม Pinto Chat เข้ากับ OpenClaw ด้วย webhook gateway ที่ชัดเจนและใช้งานจริงได้",
           hero_desc:
             "ปลั๊กอินนี้รับ event จาก Pinto ส่งต่อเข้า OpenClaw agent แล้วส่งคำตอบสุดท้ายกลับไปยัง Pinto หน้าเอกสารนี้เป็น static docs ที่พร้อมใช้กับ GitHub Pages ทันที",
           hero_cta_start: "เริ่มใช้งาน",
@@ -1156,42 +1495,53 @@ openclaw plugins install .</code></pre>
           stat_deploy_title: "Deploy ได้ทันที",
           stat_deploy_desc: "เป็น static HTML พร้อมขึ้น GitHub Pages",
           overview_title: "ภาพรวม",
-          overview_desc: "ลำดับการทำงานของปลั๊กอินและตำแหน่งที่มันอยู่ในระบบ OpenClaw",
+          overview_desc:
+            "ลำดับการทำงานของปลั๊กอินและตำแหน่งที่มันอยู่ในระบบ OpenClaw",
           overview_step_1: "ผู้ใช้ส่งข้อความจาก Pinto",
-          overview_step_2: "Pinto เรียก webhook ของ OpenClaw ที่ /plugins/pinto/webhook",
+          overview_step_2:
+            "Pinto เรียก webhook ของ OpenClaw ที่ /plugins/pinto/webhook",
           overview_step_3: "ปลั๊กอินส่งคำขอเข้า OpenClaw agent",
-          overview_step_4: "ปลั๊กอินส่งคำตอบกลับไป Pinto ผ่าน POST /v1/bots/webhook/receive",
+          overview_step_4:
+            "ปลั๊กอินส่งคำตอบกลับไป Pinto ผ่าน POST /v1/bots/webhook/receive",
           callout_package: "ชื่อแพ็กเกจ",
           callout_channel: "Channel ID",
           features_title: "ความสามารถ",
           features_desc: "พฤติกรรมหลักที่มีอยู่ใน implementation ปัจจุบัน",
           feature_1_title: "รองรับ Direct Chat",
-          feature_1_desc: "รับ event จาก Pinto Chat และส่งเข้า pipeline ของ OpenClaw agent",
+          feature_1_desc:
+            "รับ event จาก Pinto Chat และส่งเข้า pipeline ของ OpenClaw agent",
           feature_2_title: "รองรับ Media Reply",
-          feature_2_desc: "ส่ง reply กลับพร้อม media_url ได้เมื่อ agent ตอบเป็น rich content",
+          feature_2_desc:
+            "ส่ง reply กลับพร้อม media_url ได้เมื่อ agent ตอบเป็น rich content",
           feature_3_title: "ตรวจ Shared Secret",
-          feature_3_desc: "รองรับการตรวจ X-Pinto-Secret ทั้ง inbound และ outbound",
+          feature_3_desc:
+            "รองรับการตรวจ X-Pinto-Secret ทั้ง inbound และ outbound",
           requirements_title: "สิ่งที่ต้องมี",
           requirements_desc: "Environment และข้อมูลที่ต้องเตรียมก่อนติดตั้ง",
           installation_title: "การติดตั้ง",
-          installation_desc: "วิธีติดตั้งที่แนะนำ ติดตั้งจาก source และ deploy แบบคัดลอกไฟล์",
+          installation_desc:
+            "วิธีติดตั้งที่แนะนำ ติดตั้งจาก source และ deploy แบบคัดลอกไฟล์",
           openclaw_title: "ตั้งค่า OpenClaw",
-          openclaw_desc: "ตั้งค่าได้ผ่าน UI ที่ Channels > Pinto Chat หรือผ่าน config file",
+          openclaw_desc:
+            "ตั้งค่าได้ผ่าน UI ที่ Channels > Pinto Chat หรือผ่าน config file",
           pinto_title: "ตั้งค่า Pinto",
           pinto_desc: "ข้อมูลที่ Pinto ต้องมีเพื่อเรียก OpenClaw ได้ถูกต้อง",
           flow_title: "ลำดับการเชื่อมต่อ",
           flow_desc: "ขั้นตอนสั้นที่สุดเพื่อให้ integration ใช้งานได้จริง",
           security_title: "Webhook Secret",
-          security_desc: "ปลั๊กอินรองรับ shared-secret validation ทั้งสองทิศทาง",
+          security_desc:
+            "ปลั๊กอินรองรับ shared-secret validation ทั้งสองทิศทาง",
           endpoints_title: "Endpoints",
           endpoints_desc: "API inbound และ outbound ที่ gateway ใช้งาน",
           testing_title: "การทดสอบ",
-          testing_desc: "ทดสอบ integration แบบ local, public และยิงตรงไปที่ Pinto",
+          testing_desc:
+            "ทดสอบ integration แบบ local, public และยิงตรงไปที่ Pinto",
           troubleshooting_title: "แก้ปัญหา",
           troubleshooting_desc: "ปัญหาที่พบบ่อยและความหมายโดยทั่วไป",
-          footer_text: "เอกสารแบบ static สำหรับ GitHub Pages โดยยังคงใช้ README.md เป็น source of truth ของเนื้อหาสองภาษา",
-          nav_llm: "llm.txt — สำหรับ AI agent"
-        }
+          footer_text:
+            "เอกสารแบบ static สำหรับ GitHub Pages โดยยังคงใช้ README.md เป็น source of truth ของเนื้อหาสองภาษา",
+          nav_llm: "llm.txt — สำหรับ AI agent",
+        },
       };
 
       if (window.hljs) {
@@ -1250,33 +1600,24 @@ openclaw plugins install .</code></pre>
         .map((link) => document.querySelector(link.getAttribute("href")))
         .filter(Boolean);
 
-      const visibleIds = new Set();
-
-      const updateActiveLink = () => {
-        const activeSection = sections.find((s) => visibleIds.has(s.id));
+      const updateActive = () => {
+        const threshold = window.innerHeight * 0.15;
+        let active = null;
+        for (const section of sections) {
+          if (section.getBoundingClientRect().top <= threshold) {
+            active = section;
+          }
+        }
         links.forEach((l) => l.classList.remove("active"));
-        if (activeSection) {
+        if (active) {
           links
-            .find((l) => l.getAttribute("href") === "#" + activeSection.id)
+            .find((l) => l.getAttribute("href") === "#" + active.id)
             ?.classList.add("active");
         }
       };
 
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              visibleIds.add(entry.target.id);
-            } else {
-              visibleIds.delete(entry.target.id);
-            }
-          });
-          updateActiveLink();
-        },
-        { rootMargin: "-35% 0px -55% 0px", threshold: 0.01 }
-      );
-
-      sections.forEach((section) => observer.observe(section));
+      window.addEventListener("scroll", updateActive, { passive: true });
+      updateActive();
     </script>
   </body>
 </html>

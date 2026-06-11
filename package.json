@@ -50,9 +50,7 @@
         "test:watch": "vitest",
         "prepare": "npm run build"
     },
-    "dependencies": {
-        "zod": "^4.4.3"
-    },
+    "dependencies": {},
     "devDependencies": {
         "@types/node": "^20.11.0",
         "openclaw": "^2026.6.5",
