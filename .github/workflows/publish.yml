@@ -27,7 +27,9 @@ jobs:
 
       - name: Verify package artifact
         run: |
-          TARBALL=$(npm pack)
+          PACK_JSON="${RUNNER_TEMP:-$PWD}/pinto-pack.json"
+          npm pack --json --ignore-scripts > "$PACK_JSON"
+          TARBALL=$(PACK_JSON="$PACK_JSON" node -p "require(process.env.PACK_JSON)[0].filename")
           tar -tf "$TARBALL" | grep -qx "package/dist/index.js"
 
       - name: Publish
