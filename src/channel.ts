@@ -229,6 +229,223 @@ const normalizePintoImageUrl = (value: unknown): string | undefined => {
   return trimmed || undefined;
 };
 
+type PintoResolvedImageUrl = {
+  url: string;
+  source: string;
+};
+
+const PINTO_DIRECT_IMAGE_URL_KEYS = [
+  "image_url",
+  "imageUrl",
+  "media_url",
+  "mediaUrl",
+  "MediaUrl",
+  "url",
+] as const;
+
+const PINTO_NESTED_IMAGE_URL_KEYS = [
+  ...PINTO_DIRECT_IMAGE_URL_KEYS,
+  "file_url",
+  "fileUrl",
+  "download_url",
+  "downloadUrl",
+  "href",
+  "src",
+] as const;
+
+const PINTO_MEDIA_CONTAINER_KEYS = [
+  "attachment",
+  "attachments",
+  "file",
+  "files",
+  "image",
+  "images",
+  "media",
+  "medias",
+] as const;
+
+const PINTO_SENSITIVE_LOG_KEY_PATTERN =
+  /(authorization|credential|password|secret|signature|token|webhook_secret|api[-_]?key)/i;
+const PINTO_URL_LOG_KEY_PATTERN = /(href|src|uri|url)$/i;
+
+const sanitizePintoLogString = (value: string, key?: string): string => {
+  const trimmed =
+    value.length > 500 ? `${value.slice(0, 500)}...` : value;
+
+  if (!key || !PINTO_URL_LOG_KEY_PATTERN.test(key)) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = new URL(value);
+    const query = parsed.search ? "?[redacted-query]" : "";
+    const hash = parsed.hash ? "#[redacted-fragment]" : "";
+    return `${parsed.origin}${parsed.pathname}${query}${hash}`;
+  } catch {
+    return trimmed;
+  }
+};
+
+const resolvePintoImageUrlFromValue = (
+  value: unknown,
+  source: string,
+  depth = 0,
+): PintoResolvedImageUrl | undefined => {
+  if (depth > 5) {
+    return undefined;
+  }
+
+  const stringUrl = normalizePintoImageUrl(value);
+  if (stringUrl) {
+    return { url: stringUrl, source };
+  }
+
+  if (Array.isArray(value)) {
+    for (const [index, item] of value.entries()) {
+      const resolved = resolvePintoImageUrlFromValue(
+        item,
+        `${source}[${index}]`,
+        depth + 1,
+      );
+      if (resolved) {
+        return resolved;
+      }
+    }
+    return undefined;
+  }
+
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of PINTO_NESTED_IMAGE_URL_KEYS) {
+    const resolved = resolvePintoImageUrlFromValue(
+      record[key],
+      `${source}.${key}`,
+      depth + 1,
+    );
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  for (const key of PINTO_MEDIA_CONTAINER_KEYS) {
+    const resolved = resolvePintoImageUrlFromValue(
+      record[key],
+      `${source}.${key}`,
+      depth + 1,
+    );
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return undefined;
+};
+
+const resolvePintoInboundImageUrl = (
+  payload: PintoWebhookPayload,
+): PintoResolvedImageUrl | undefined => {
+  const record = payload as unknown as Record<string, unknown>;
+  for (const key of PINTO_DIRECT_IMAGE_URL_KEYS) {
+    const resolved = resolvePintoImageUrlFromValue(record[key], key);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  for (const key of PINTO_MEDIA_CONTAINER_KEYS) {
+    const resolved = resolvePintoImageUrlFromValue(record[key], key);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return undefined;
+};
+
+const sanitizePintoWebhookPayloadForLog = (
+  value: unknown,
+  depth = 0,
+  key?: string,
+): unknown => {
+  if (depth > 5) {
+    return "[max-depth]";
+  }
+
+  if (typeof value === "string") {
+    return sanitizePintoLogString(value, key);
+  }
+
+  if (Array.isArray(value)) {
+    const sanitized = value
+      .slice(0, 20)
+      .map((item) => sanitizePintoWebhookPayloadForLog(item, depth + 1, key));
+    return value.length > 20
+      ? [...sanitized, `[${value.length - 20} more items]`]
+      : sanitized;
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    sanitized[key] = PINTO_SENSITIVE_LOG_KEY_PATTERN.test(key)
+      ? "[redacted]"
+      : sanitizePintoWebhookPayloadForLog(item, depth + 1, key);
+  }
+  return sanitized;
+};
+
+const logPintoWebhookPayload = (
+  log: any,
+  payload: PintoWebhookPayload,
+  imageUrl?: PintoResolvedImageUrl,
+) => {
+  const record = payload as unknown as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  const isImageEvent =
+    payload.message === "chat.sentImage" ||
+    payload.image_url !== undefined ||
+    payload.imageUrl !== undefined ||
+    payload.media_url !== undefined ||
+    payload.mediaUrl !== undefined ||
+    payload.attachment !== undefined ||
+    payload.attachments !== undefined ||
+    payload.file !== undefined ||
+    payload.files !== undefined ||
+    payload.image !== undefined ||
+    payload.images !== undefined ||
+    payload.media !== undefined ||
+    payload.medias !== undefined;
+
+  log?.debug?.(
+    `[PintoPlugin] Webhook payload keys: ${keys.join(", ") || "(none)"}`,
+  );
+
+  if (!isImageEvent) {
+    return;
+  }
+
+  const sanitizedPayload = JSON.stringify(
+    sanitizePintoWebhookPayloadForLog(payload),
+  );
+
+  if (imageUrl) {
+    log?.info?.(
+      `[PintoPlugin] Inbound image URL resolved from ${imageUrl.source}. Payload: ${sanitizedPayload}`,
+    );
+    return;
+  }
+
+  log?.warn?.(
+    `[PintoPlugin] Inbound image payload has no supported media URL. Payload keys: ${keys.join(", ") || "(none)"}. Payload: ${sanitizedPayload}`,
+  );
+};
+
 const inferPintoImageMimeType = (imageUrl: string): string | undefined => {
   let pathname = imageUrl;
   try {
@@ -722,6 +939,9 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
               lastInboundAt: Date.now(),
             });
 
+            const inboundImageUrl = resolvePintoInboundImageUrl(payload);
+            logPintoWebhookPayload(ctx.log, payload, inboundImageUrl);
+
             const peer = { kind: "direct", id: payload.chat_id };
             const route = targetAgentId
               ? {
@@ -747,7 +967,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
                 RawBody: payload.message ?? "",
                 CommandBody: payload.message ?? "",
                 BodyForCommands: payload.message ?? "",
-                ...buildPintoImageMediaContext(payload.image_url),
+                ...buildPintoImageMediaContext(inboundImageUrl?.url),
                 From: `pinto:${payload.user_id ?? payload.chat_id}`,
                 To: `pinto:${payload.chat_id}`,
                 SessionKey: sessionKey,

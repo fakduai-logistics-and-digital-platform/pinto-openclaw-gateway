@@ -6,6 +6,18 @@ export interface PintoWebhookPayload {
   username?: string;
   message: string;
   image_url?: string;
+  imageUrl?: string;
+  media_url?: string;
+  mediaUrl?: string;
+  url?: string;
+  attachment?: unknown;
+  attachments?: unknown;
+  file?: unknown;
+  files?: unknown;
+  image?: unknown;
+  images?: unknown;
+  media?: unknown;
+  medias?: unknown;
   chat_id: string;
   bot_id: string;
 }
