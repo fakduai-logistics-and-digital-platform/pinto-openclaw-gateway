@@ -1,19 +1,17 @@
-import { randomBytes } from "node:crypto";
 import type { IncomingMessage } from "node:http";
 import type {
   ChannelPlugin,
-  RuntimeEnv,
-} from "openclaw/plugin-sdk/mattermost";
+  PluginRuntime as RuntimeEnv,
+} from "openclaw/plugin-sdk/core";
 import {
   DEFAULT_ACCOUNT_ID,
-  applySetupAccountConfigPatch,
   buildChannelConfigSchema,
-  registerPluginHttpRoute,
   setAccountEnabledInConfigSection,
-} from "openclaw/plugin-sdk/mattermost";
+} from "openclaw/plugin-sdk/core";
+import { applySetupAccountConfigPatch } from "openclaw/plugin-sdk/setup";
+import { registerPluginHttpRoute } from "openclaw/plugin-sdk/webhook-ingress";
 import { z } from "zod";
 import { PintoWebhookPayload, PintoWebhookReceiveRequest } from "./types.js";
-
 const stripTrailingSlash = (url: string) => url.replace(/\/+$/, "");
 const PINTO_SECRET_HEADER = "x-pinto-secret";
 const DEFAULT_PINTO_API_URL = "https://api.pinto-app.com";
@@ -69,9 +67,6 @@ PintoAccountConfigSchema.extend({
   defaultAccount: z.string().trim().min(1).optional(),
 }));
 
-const generatePintoWebhookSecret = () =>
-  `pinto-oc-${randomBytes(12).toString("hex")}`;
-
 const normalizeWebhookSecret = (value: unknown): string | undefined => {
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -92,7 +87,7 @@ export const buildDefaultPintoChannelConfig = () => ({
   apiUrl: DEFAULT_PINTO_API_URL,
   botId: "",
   agentId: "",
-  webhookSecret: generatePintoWebhookSecret(),
+  webhookSecret: "",
   webhookPath: DEFAULT_PINTO_WEBHOOK_PATH,
 });
 
@@ -171,6 +166,20 @@ const getPintoChannelConfig = (cfg: any, accountId?: string | null) => {
   };
 };
 
+
+const findPintoAccountByBotId = (cfg: any, botId: string) => {
+  const targetBotId = botId.trim();
+  if (!targetBotId) return null;
+  for (const accountId of listPintoAccountIds(cfg)) {
+    const account = getPintoChannelConfig(cfg, accountId);
+    if (account?.enabled === false) continue;
+    if (account?.botId?.trim() === targetBotId) {
+      return { accountId, account };
+    }
+  }
+  return null;
+};
+
 const buildPintoHeaders = (webhookSecret?: string) => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -212,6 +221,101 @@ const normalizeObserverAgentIds = (value: unknown): string[] | undefined => {
   return normalized.length ? Array.from(new Set(normalized)) : undefined;
 };
 
+const normalizePintoImageUrl = (value: unknown): string | undefined => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
+
+const inferPintoImageMimeType = (imageUrl: string): string | undefined => {
+  let pathname = imageUrl;
+  try {
+    pathname = new URL(imageUrl).pathname;
+  } catch {
+    pathname = imageUrl.split(/[?#]/, 1)[0] ?? imageUrl;
+  }
+
+  const extension = pathname.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  switch (extension) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    case "heic":
+      return "image/heic";
+    case "heif":
+      return "image/heif";
+    case "bmp":
+      return "image/bmp";
+    case "tif":
+    case "tiff":
+      return "image/tiff";
+    default:
+      return undefined;
+  }
+};
+
+const buildPintoImageMediaContext = (imageUrlValue: unknown) => {
+  const imageUrl = normalizePintoImageUrl(imageUrlValue);
+  if (!imageUrl) {
+    return {};
+  }
+  const mediaType = inferPintoImageMimeType(imageUrl) ?? "image/*";
+  return {
+    MediaUrl: imageUrl,
+    MediaUrls: [imageUrl],
+    MediaType: mediaType,
+    MediaTypes: [mediaType],
+  };
+};
+
+const stripPintoPrefix = (id: string) => id.replace(/^pinto:/, "");
+
+const buildPintoApiError = async (res: Response) => {
+  const detail = await res
+    .text()
+    .then((body) => body.trim())
+    .catch(() => "");
+  const detailSuffix = detail ? `: ${detail}` : "";
+  return `Pinto API error: ${res.status} ${res.statusText}${detailSuffix}`;
+};
+
+type PintoReplyPayload = {
+  text?: unknown;
+  body?: unknown;
+  mediaUrl?: unknown;
+  mediaUrls?: unknown;
+};
+
+const resolvePintoReplyText = (payload: PintoReplyPayload) => {
+  const text =
+    typeof payload.text === "string"
+      ? payload.text
+      : typeof payload.body === "string"
+        ? payload.body
+        : "";
+  const trimmed = text.trim();
+  return trimmed || undefined;
+};
+
+const resolvePintoReplyMediaUrls = (payload: PintoReplyPayload) => {
+  const mediaUrls = Array.isArray(payload.mediaUrls)
+    ? payload.mediaUrls
+    : payload.mediaUrl
+      ? [payload.mediaUrl]
+      : [];
+  return mediaUrls
+    .map((mediaUrl) => (typeof mediaUrl === "string" ? mediaUrl.trim() : ""))
+    .filter(Boolean);
+};
+
 async function sendPintoText(params: {
   cfg: any;
   accountId?: string | null;
@@ -230,7 +334,7 @@ async function sendPintoText(params: {
 
   const payload: PintoWebhookReceiveRequest = {
     bot_id: botId,
-    chat_id: params.to,
+    chat_id: stripPintoPrefix(params.to),
     reply_message: params.text,
   };
 
@@ -241,10 +345,82 @@ async function sendPintoText(params: {
   });
 
   if (!res.ok) {
-    throw new Error(`Pinto API error: ${res.status} ${res.statusText}`);
+    throw new Error(await buildPintoApiError(res));
   }
 
   return { channel: "pinto", messageId: Date.now().toString() };
+}
+
+async function sendPintoMedia(params: {
+  cfg: any;
+  accountId?: string | null;
+  to: string;
+  text?: string;
+  mediaUrl: string;
+}) {
+  const account = getPintoChannelConfig(params.cfg, params.accountId);
+  const apiUrl = stripTrailingSlash(
+    account?.apiUrl ?? "https://api-dev.pinto-app.com",
+  );
+  const botId = account?.botId?.trim();
+  const webhookSecret = normalizeWebhookSecret(account?.webhookSecret);
+
+  if (!botId) {
+    throw new Error("Pinto botId is not configured");
+  }
+
+  const payload: PintoWebhookReceiveRequest = {
+    bot_id: botId,
+    chat_id: stripPintoPrefix(params.to),
+    reply_message: params.text ?? "",
+    media_url: params.mediaUrl,
+  };
+
+  const res = await fetch(`${apiUrl}/v1/bots/webhook/receive`, {
+    method: "POST",
+    headers: buildPintoHeaders(webhookSecret),
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(await buildPintoApiError(res));
+  }
+
+  return { channel: "pinto", messageId: Date.now().toString() };
+}
+
+async function deliverPintoReplyPayload(params: {
+  cfg: any;
+  accountId?: string | null;
+  to: string;
+  payload: PintoReplyPayload;
+}) {
+  const text = resolvePintoReplyText(params.payload);
+  const mediaUrls = resolvePintoReplyMediaUrls(params.payload);
+
+  if (mediaUrls.length > 0) {
+    for (const [index, mediaUrl] of mediaUrls.entries()) {
+      await sendPintoMedia({
+        cfg: params.cfg,
+        accountId: params.accountId,
+        to: params.to,
+        text: index === 0 ? text : undefined,
+        mediaUrl,
+      });
+    }
+    return;
+  }
+
+  if (!text) {
+    return;
+  }
+
+  await sendPintoText({
+    cfg: params.cfg,
+    accountId: params.accountId,
+    to: params.to,
+    text,
+  });
 }
 
 const waitUntilAbort = (
@@ -298,12 +474,12 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
       const webhookPath = normalizeWebhookPath(account?.config?.webhookPath);
       if (!account?.config?.botId?.trim()) {
         warnings.push(
-          "Pinto botId is not configured. Set channels.pinto.botId to your real Pinto bot UUID.",
+          "Pinto botId is not configured. Set channels.pinto.botId to the real Pinto bot id.",
         );
       }
       if (!normalizeWebhookSecret(account?.config?.webhookSecret)) {
         warnings.push(
-          "Pinto webhookSecret is empty. Set channels.pinto.webhookSecret or let setup generate one.",
+          "Pinto webhookSecret is empty. Set channels.pinto.webhookSecret if you want webhook secret validation.",
         );
       }
       if (webhookPath !== (account?.config?.webhookPath?.trim() || webhookPath)) {
@@ -362,7 +538,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
           webhookSecret:
             (inputWebhookSecret ? input.webhookSecret : undefined) ||
             (resolvedWebhookSecret ? resolved.webhookSecret : undefined) ||
-            generatePintoWebhookSecret(),
+            "",
           webhookPath: nextWebhookPath,
         },
       });
@@ -374,6 +550,16 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
     nativeCommands: false,
     reactions: false,
     threads: false,
+  },
+
+  agentPrompt: {
+    messageToolHints: () => [
+      "",
+      "### Pinto Reply Behavior",
+      "- For an inbound Pinto chat, reply with normal assistant text. The Pinto plugin automatically sends your final reply back to the current Pinto chat.",
+      "- Do not call the Pinto API, include `bot_id`/`chat_id` JSON, or explain webhook delivery unless the user asks about integration details.",
+      "- Keep Pinto replies concise and conversational. If you include media, use a public `mediaUrl`/`mediaUrls` payload when the channel tooling supports it.",
+    ],
   },
 
   config: {
@@ -440,35 +626,10 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
       sendPintoText({ cfg, accountId, to, text }),
 
     sendMedia: async ({ to, text, mediaUrl, accountId, cfg }) => {
-      const account = getPintoChannelConfig(cfg, accountId);
-      const apiUrl = stripTrailingSlash(
-        account?.apiUrl ?? "https://api-dev.pinto-app.com",
-      );
-      const botId = account?.botId?.trim();
-      const webhookSecret = normalizeWebhookSecret(account?.webhookSecret);
-
-      if (!botId) {
-        throw new Error("Pinto botId is not configured");
+      if (!mediaUrl) {
+        throw new Error("Pinto mediaUrl is not configured");
       }
-
-      const payload: PintoWebhookReceiveRequest = {
-        bot_id: botId,
-        chat_id: to,
-        reply_message: text,
-        media_url: mediaUrl,
-      };
-
-      const res = await fetch(`${apiUrl}/v1/bots/webhook/receive`, {
-        method: "POST",
-        headers: buildPintoHeaders(webhookSecret),
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Pinto API error: ${res.status} ${res.statusText}`);
-      }
-
-      return { channel: "pinto", messageId: Date.now().toString() };
+      return sendPintoMedia({ cfg, accountId, to, text, mediaUrl });
     },
   },
 
@@ -511,13 +672,10 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
               return true;
             }
 
-            const configuredSecret = normalizeWebhookSecret(
-              account?.webhookSecret,
-            );
-            const inboundSecret = getRequestHeader(req, PINTO_SECRET_HEADER);
-            if (configuredSecret && inboundSecret !== configuredSecret) {
-              res.statusCode = 401;
-              res.end(JSON.stringify({ error: "Invalid webhook secret" }));
+            if (req.method !== "POST") {
+              res.statusCode = 405;
+              res.setHeader?.("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: "Method Not Allowed" }));
               return true;
             }
 
@@ -527,74 +685,100 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
               res.end(JSON.stringify({ error: "Missing required fields" }));
               return true;
             }
-            if (payload.bot_id !== configuredBotId) {
+
+            const matched = findPintoAccountByBotId(ctx.cfg, payload.bot_id);
+            if (!matched) {
               res.statusCode = 403;
-              res.end(JSON.stringify({ error: "Invalid bot_id for this account" }));
+              res.end(JSON.stringify({ error: "Invalid bot_id for configured Pinto accounts" }));
+              return true;
+            }
+
+            const targetAccountId = matched.accountId;
+            const targetAccount = matched.account;
+            const targetBotId = targetAccount?.botId?.trim();
+            const targetAgentId = targetAccount?.agentId?.trim();
+            const targetObserverAgentIds =
+              normalizeObserverAgentIds(targetAccount?.observerAgentIds)?.filter(
+                (agentId) => agentId !== targetAgentId,
+              ) || [];
+
+
+            const configuredSecret = normalizeWebhookSecret(
+              targetAccount?.webhookSecret,
+            );
+            const inboundSecret = getRequestHeader(req, PINTO_SECRET_HEADER);
+            if (configuredSecret && inboundSecret !== configuredSecret) {
+              res.statusCode = 401;
+              res.end(JSON.stringify({ error: "Invalid webhook secret" }));
               return true;
             }
 
             ctx.setStatus?.({
-              accountId: ctx.accountId,
-              configuredBotId,
-              configuredAgentId: configuredAgentId || null,
-              configuredObserverAgentIds: observerAgentIds,
+              accountId: targetAccountId,
+              configuredBotId: targetBotId,
+              configuredAgentId: targetAgentId || null,
+              configuredObserverAgentIds: targetObserverAgentIds,
               webhookPath,
               lastInboundAt: Date.now(),
             });
 
             const peer = { kind: "direct", id: payload.chat_id };
-            const route = configuredAgentId
+            const route = targetAgentId
               ? {
-                  accountId: ctx.accountId,
+                  accountId: targetAccountId,
                   sessionKey: ctx.channelRuntime.routing.buildAgentSessionKey({
-                    agentId: configuredAgentId,
+                    agentId: targetAgentId,
                     channel: "pinto",
-                    accountId: ctx.accountId,
+                    accountId: targetAccountId,
                     peer,
                   }),
                 }
               : ctx.channelRuntime.routing.resolveAgentRoute({
                   cfg: ctx.cfg,
                   channel: "pinto",
-                  accountId: ctx.accountId,
+                  accountId: targetAccountId,
                   peer,
                 });
 
             const buildMsgCtx = (sessionKey: string, accountId: string) =>
               ctx.channelRuntime.reply.finalizeInboundContext({
-              Body: payload.message ?? "",
-              RawBody: payload.message ?? "",
-              CommandBody: payload.message ?? "",
-              From: `pinto:${payload.user_id ?? payload.chat_id}`,
-              To: `pinto:${payload.chat_id}`,
-              SessionKey: sessionKey,
-              AccountId: accountId,
-              OriginatingChannel: "pinto",
-              OriginatingTo: `pinto:${payload.chat_id}`,
-              ChatType: "direct",
-              SenderName:
-                payload.username ?? payload.user_id ?? payload.chat_id,
-              SenderId: payload.user_id ?? payload.chat_id,
-              Provider: "pinto",
-              Surface: "pinto",
-              ConversationLabel: `Pinto: ${payload.chat_id}`,
-              Timestamp: Date.now(),
-              CommandAuthorized: true,
-            });
+                Body: payload.message ?? "",
+                BodyForAgent: payload.message ?? "",
+                RawBody: payload.message ?? "",
+                CommandBody: payload.message ?? "",
+                BodyForCommands: payload.message ?? "",
+                ...buildPintoImageMediaContext(payload.image_url),
+                From: `pinto:${payload.user_id ?? payload.chat_id}`,
+                To: `pinto:${payload.chat_id}`,
+                SessionKey: sessionKey,
+                AccountId: accountId,
+                OriginatingChannel: "pinto",
+                OriginatingTo: `pinto:${payload.chat_id}`,
+                ExplicitDeliverRoute: true,
+                ChatType: "direct",
+                SenderName:
+                  payload.username ?? payload.user_id ?? payload.chat_id,
+                SenderId: payload.user_id ?? payload.chat_id,
+                Provider: "pinto",
+                Surface: "pinto",
+                ConversationLabel: `Pinto: ${payload.chat_id}`,
+                Timestamp: Date.now(),
+                CommandAuthorized: true,
+              });
 
             const msgCtx = buildMsgCtx(route.sessionKey, route.accountId);
 
-            for (const observerAgentId of observerAgentIds) {
+            for (const observerAgentId of targetObserverAgentIds) {
               const observerSessionKey =
                 ctx.channelRuntime.routing.buildAgentSessionKey({
                   agentId: observerAgentId,
                   channel: "pinto",
-                  accountId: ctx.accountId,
+                  accountId: targetAccountId,
                   peer,
                 });
               const observerCtx = buildMsgCtx(
                 observerSessionKey,
-                ctx.accountId,
+                targetAccountId,
               );
 
               // Observer agents share the inbound context but never reply back to Pinto.
@@ -620,17 +804,12 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
                 ctx: msgCtx,
                 cfg: ctx.cfg,
                 dispatcherOptions: {
-                  deliver: async (replyPayload: {
-                    text?: string;
-                    body?: string;
-                  }) => {
-                    const text = replyPayload?.text ?? replyPayload?.body;
-                    if (!text) return;
-                    await sendPintoText({
+                  deliver: async (replyPayload: PintoReplyPayload) => {
+                    await deliverPintoReplyPayload({
                       cfg: ctx.cfg,
-                      accountId: ctx.accountId,
+                      accountId: targetAccountId,
                       to: payload.chat_id,
-                      text,
+                      payload: replyPayload,
                     });
                   },
                 },

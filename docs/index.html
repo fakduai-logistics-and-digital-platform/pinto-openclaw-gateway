@@ -694,7 +694,7 @@
             </div>
             <div class="card plain">
               <ul class="check-list">
-                <li>Real Pinto bot UUID</li>
+                <li>Real Pinto bot ID</li>
                 <li>Valid Pinto API base URL</li>
                 <li>Public or reachable webhook URL</li>
               </ul>
@@ -765,7 +765,7 @@ openclaw plugins install .</code></pre>
               </tr>
               <tr>
                 <td><code>Bot Id</code></td>
-                <td>Must be the real Pinto bot UUID, not a slug.</td>
+                <td>Must match the real Pinto <code>bot_id</code> value.</td>
               </tr>
               <tr>
                 <td><code>Enabled</code></td>
@@ -773,7 +773,7 @@ openclaw plugins install .</code></pre>
               </tr>
               <tr>
                 <td><code>Webhook Secret</code></td>
-                <td>Shared secret used in the <code>X-Pinto-Secret</code> header.</td>
+                <td>Optional shared secret used in the <code>X-Pinto-Secret</code> header. It is empty by default.</td>
               </tr>
             </tbody>
           </table>
@@ -788,8 +788,8 @@ openclaw plugins install .</code></pre>
     "pinto": {
       "enabled": true,
       "apiUrl": "https://api-dev.pinto-app.com",
-      "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
-      "webhookHeaderValue": "pinto-oc-9f3a1b7c5d2e8k4m"
+      "botId": "bot-sales",
+      "webhookSecret": ""
     }
   }
 }</code></pre>
@@ -807,8 +807,8 @@ openclaw plugins install .</code></pre>
               <p><code>https://your-host.example.com/plugins/pinto/webhook</code></p>
             </article>
             <article class="card plain">
-              <h4>Bot UUID</h4>
-              <p>Use the Pinto bot <code>_id</code> as the OpenClaw <code>Bot Id</code>.</p>
+              <h4>Bot ID</h4>
+              <p>Use the Pinto bot <code>bot_id</code> as the OpenClaw <code>Bot Id</code>.</p>
             </article>
           </div>
         </section>
@@ -872,7 +872,7 @@ openclaw plugins install .</code></pre>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
                 <pre class="code-block"><code class="language-json">{
-  "bot_id": "20387880-7934-40c3-b7d4-9fa6557697cf",
+  "bot_id": "bot-sales",
   "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
   "message": "hello",
   "user_id": "a7c3fe36-cf41-42b5-a290-ca98e6129fac",
@@ -897,7 +897,7 @@ openclaw plugins install .</code></pre>
                   <button class="copy-button" type="button">Copy</button>
                 </div>
                 <pre class="code-block"><code class="language-json">{
-  "bot_id": "20387880-7934-40c3-b7d4-9fa6557697cf",
+  "bot_id": "bot-sales",
   "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
   "reply_message": "Hello from OpenClaw",
   "media_url": "https://example.com/image.png"
@@ -925,7 +925,7 @@ openclaw plugins install .</code></pre>
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
-    "bot_id":"20387880-7934-40c3-b7d4-9fa6557697cf",
+    "bot_id":"bot-sales",
     "chat_id":"5f315d4e-cf22-4054-bbb0-2fe074bd3892",
     "message":"hello",
     "user_id":"a7c3fe36-cf41-42b5-a290-ca98e6129fac"
@@ -958,7 +958,7 @@ openclaw plugins install .</code></pre>
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
-    "bot_id":"20387880-7934-40c3-b7d4-9fa6557697cf",
+    "bot_id":"bot-sales",
     "chat_id":"5f315d4e-cf22-4054-bbb0-2fe074bd3892",
     "reply_message":"OpenClaw outbound test"
   }'</code></pre>

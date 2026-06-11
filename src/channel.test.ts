@@ -1,5 +1,11 @@
+import { EventEmitter } from "node:events";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { pintoPlugin, setPintoRuntime } from "./channel.js";
+import { registerPluginHttpRoute } from "openclaw/plugin-sdk/webhook-ingress";
+import { pintoPlugin } from "./channel.js";
+
+vi.mock("openclaw/plugin-sdk/webhook-ingress", () => ({
+  registerPluginHttpRoute: vi.fn(() => vi.fn()),
+}));
 
 describe("pintoPlugin", () => {
   describe("meta fields", () => {
@@ -11,6 +17,19 @@ describe("pintoPlugin", () => {
       expect(meta.blurb).toBeTypeOf("string");
       expect(meta.aliases).toContain("pinto");
       expect(meta.detailLabel).toBeTypeOf("string");
+    });
+  });
+
+  describe("agentPrompt", () => {
+    it("should tell agents that normal final replies are delivered to Pinto", () => {
+      const hints = pintoPlugin.agentPrompt!.messageToolHints!({
+        cfg: {},
+        accountId: "default",
+      } as any).join("\n");
+
+      expect(hints).toContain("reply with normal assistant text");
+      expect(hints).toContain("automatically sends your final reply");
+      expect(hints).toContain("Do not call the Pinto API");
     });
   });
 
@@ -158,6 +177,7 @@ describe("pintoPlugin", () => {
       expect(warnings).toEqual(
         expect.arrayContaining([
           expect.stringContaining("botId is not configured"),
+          expect.stringContaining("real Pinto bot id"),
           expect.stringContaining("webhookSecret is empty"),
           expect.stringContaining("webhookPath should start"),
         ]),
@@ -215,7 +235,7 @@ describe("pintoPlugin", () => {
   });
 
   describe("setup.applyAccountConfig", () => {
-    it("should apply default Pinto config and generate a webhook secret", () => {
+    it("should apply default Pinto config without generating a webhook secret", () => {
       const next = pintoPlugin.setup!.applyAccountConfig({
         cfg: { channels: {} },
         accountId: "default",
@@ -224,9 +244,7 @@ describe("pintoPlugin", () => {
 
       expect(next.channels.pinto.enabled).toBe(true);
       expect(next.channels.pinto.apiUrl).toBe("https://api.pinto-app.com");
-      expect(next.channels.pinto.webhookSecret).toMatch(
-        /^pinto-oc-[a-f0-9]{24}$/,
-      );
+      expect(next.channels.pinto.webhookSecret).toBe("");
       expect(next.channels.pinto.webhookPath).toBe("/plugins/pinto/webhook");
       expect(next.channels.pinto.agentId).toBeUndefined();
       expect(next.channels.pinto.observerAgentIds).toBeUndefined();
@@ -290,6 +308,106 @@ describe("pintoPlugin", () => {
     });
   });
 
+  describe("gateway.startAccount", () => {
+    beforeEach(() => {
+      vi.mocked(registerPluginHttpRoute).mockReset();
+      vi.mocked(registerPluginHttpRoute).mockReturnValue(vi.fn());
+    });
+
+    it("should forward inbound Pinto image_url as OpenClaw media context", async () => {
+      const abortController = new AbortController();
+      const dispatchReplyWithBufferedBlockDispatcher = vi
+        .fn()
+        .mockResolvedValue(undefined);
+      const finalizeInboundContext = vi.fn((ctx: any) => ctx);
+      const cfg = {
+        channels: {
+          pinto: {
+            accounts: {
+              bot1: {
+                enabled: true,
+                apiUrl: "https://api.pinto-app.com",
+                botId: "bot-123",
+                agentId: "agent-1",
+                webhookSecret: "secret123",
+                webhookPath: "/plugins/pinto/webhook",
+              },
+            },
+          },
+        },
+      };
+
+      const lifecycle = pintoPlugin.gateway!.startAccount({
+        cfg,
+        accountId: "bot1",
+        abortSignal: abortController.signal,
+        log: { warn: vi.fn(), error: vi.fn() },
+        setStatus: vi.fn(),
+        channelRuntime: {
+          routing: {
+            buildAgentSessionKey: vi.fn(() => "session-1"),
+            resolveAgentRoute: vi.fn(),
+          },
+          reply: {
+            finalizeInboundContext,
+            dispatchReplyWithBufferedBlockDispatcher,
+          },
+        },
+      } as any);
+
+      const route = vi.mocked(registerPluginHttpRoute).mock.calls[0][0];
+      const req = new EventEmitter() as any;
+      req.method = "POST";
+      req.headers = { "x-pinto-secret": "secret123" };
+      const res = {
+        statusCode: 0,
+        setHeader: vi.fn(),
+        end: vi.fn(),
+      };
+
+      queueMicrotask(() => {
+        req.emit(
+          "data",
+          Buffer.from(
+            JSON.stringify({
+              bot_id: "bot-123",
+              chat_id: "chat1",
+              message: "please check this",
+              image_url: "https://img.example.com/photo.png?token=abc",
+              user_id: "user1",
+            }),
+          ),
+        );
+        req.emit("end");
+      });
+
+      await route.handler(req, res as any);
+      abortController.abort();
+      await lifecycle;
+
+      expect(res.statusCode).toBe(200);
+      expect(finalizeInboundContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          BodyForAgent: "please check this",
+          MediaUrl: "https://img.example.com/photo.png?token=abc",
+          MediaUrls: ["https://img.example.com/photo.png?token=abc"],
+          MediaType: "image/png",
+          MediaTypes: ["image/png"],
+        }),
+      );
+      expect(dispatchReplyWithBufferedBlockDispatcher).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ctx: expect.objectContaining({
+            MediaUrl: "https://img.example.com/photo.png?token=abc",
+            MediaUrls: ["https://img.example.com/photo.png?token=abc"],
+            MediaType: "image/png",
+            MediaTypes: ["image/png"],
+          }),
+        }),
+      );
+    });
+  });
+
   describe("outbound.sendText", () => {
     beforeEach(() => {
       vi.restoreAllMocks();
@@ -300,6 +418,7 @@ describe("pintoPlugin", () => {
         ok: false,
         status: 502,
         statusText: "Bad Gateway",
+        text: vi.fn().mockResolvedValue('{"error":"bad chat id"}'),
       });
 
       await expect(
@@ -320,7 +439,7 @@ describe("pintoPlugin", () => {
             },
           },
         } as any),
-      ).rejects.toThrow();
+      ).rejects.toThrow('{"error":"bad chat id"}');
     });
 
     it("should return messageId on success", async () => {
@@ -356,6 +475,39 @@ describe("pintoPlugin", () => {
           }),
         }),
       );
+      expect(
+        JSON.parse((global.fetch as any).mock.calls[0][1].body),
+      ).toMatchObject({
+        chat_id: "chat1",
+      });
+    });
+
+    it("should strip pinto prefix from outbound text chat id", async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+
+      await pintoPlugin.outbound.sendText({
+        to: "pinto:efa0609a-chat",
+        text: "hello",
+        accountId: "bot1",
+        cfg: {
+          channels: {
+            pinto: {
+              accounts: {
+                bot1: {
+                  apiUrl: "https://api.pinto-app.com",
+                  botId: "bot-123",
+                },
+              },
+            },
+          },
+        },
+      } as any);
+
+      expect(
+        JSON.parse((global.fetch as any).mock.calls[0][1].body),
+      ).toMatchObject({
+        chat_id: "efa0609a-chat",
+      });
     });
   });
 
@@ -425,8 +577,46 @@ describe("pintoPlugin", () => {
             "Content-Type": "application/json",
             "X-Pinto-Secret": "secret123",
           }),
+          body: expect.stringContaining(
+            '"media_url":"https://img.example.com/a.png"',
+          ),
         }),
       );
+      expect(
+        JSON.parse((global.fetch as any).mock.calls[0][1].body),
+      ).toMatchObject({
+        chat_id: "chat1",
+      });
+    });
+
+    it("should strip pinto prefix from outbound media chat id", async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+
+      await pintoPlugin.outbound.sendMedia!({
+        to: "pinto:efa0609a-chat",
+        text: "check this",
+        mediaUrl: "https://img.example.com/a.png",
+        accountId: "bot1",
+        cfg: {
+          channels: {
+            pinto: {
+              accounts: {
+                bot1: {
+                  apiUrl: "https://api.pinto-app.com",
+                  botId: "bot-123",
+                },
+              },
+            },
+          },
+        },
+      } as any);
+
+      expect(
+        JSON.parse((global.fetch as any).mock.calls[0][1].body),
+      ).toMatchObject({
+        chat_id: "efa0609a-chat",
+        media_url: "https://img.example.com/a.png",
+      });
     });
   });
 

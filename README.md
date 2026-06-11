@@ -29,7 +29,7 @@ flow การทำงาน:
 - OpenClaw ที่รันได้แล้ว
 - Node.js 20+ และ npm
 - Pinto bot ที่สร้างไว้แล้ว
-- Bot UUID จริงของ Pinto
+- Bot ID จริงของ Pinto
 - Pinto API base URL ที่ถูกต้อง เช่น `https://api.pinto-app.com`
 - URL ที่ Pinto เข้าถึง OpenClaw ได้จริง เช่น domain, reverse proxy, Tailscale, tunnel
 
@@ -82,8 +82,8 @@ openclaw plugins install .
   - ใส่ได้ทั้งแบบมี `/` ท้ายหรือไม่มี `/` ท้าย
   - ตัวอย่าง `https://api.pinto-app.com`
 - `Bot Id`
-  - ต้องเป็น Bot UUID จริงของ Pinto
-  - ไม่ใช่ `bot_id` แบบ slug
+  - ต้องเป็น Bot ID จริงของ Pinto
+  - ต้องตรงกับค่า `bot_id` ที่ Pinto ส่งมา
 - `Enabled`
   - เปิดหรือปิด channel
 - `Agent Id`
@@ -96,6 +96,7 @@ openclaw plugins install .
   - observer จะไม่ตอบกลับ Pinto โดยตรง
 - `Webhook Secret`
   - secret ที่ใช้ร่วมกับ header `X-Pinto-Secret`
+  - ระบบไม่ generate ค่านี้ให้อัตโนมัติ
   - ถ้าไม่ได้ตั้งค่าไว้ ระบบจะไม่บังคับตรวจ secret ขาเข้า
 - `Webhook Path`
   - path ของ webhook endpoint บน OpenClaw
@@ -109,9 +110,10 @@ openclaw plugins install .
 - ระบบจะเติม `botId` เป็นสตริงว่าง `""`
 - ระบบจะเติม `agentId` เป็นสตริงว่าง `""`
 - ระบบจะไม่เติม `observerAgentIds` ถ้ายังไม่ได้ใช้
-- ระบบจะ generate `webhookSecret` ให้ 1 ค่าอัตโนมัติ
+- ระบบจะเติม `webhookSecret` เป็นสตริงว่าง `""`
 - ระบบจะเติม `webhookPath` เป็น `/plugins/pinto/webhook`
 - ผู้ใช้ยังต้องกรอก `botId` เองจาก Pinto bot จริง
+- ถ้าต้องการตรวจ secret ผู้ใช้ต้องกรอก `webhookSecret` เอง และตั้งค่าเดียวกันใน Pinto
 
 ตัวอย่าง config:
 
@@ -123,7 +125,7 @@ openclaw plugins install .
       "apiUrl": "https://api.pinto-app.com",
       "botId": "",
       "agentId": "",
-      "webhookSecret": "pinto-oc-9f3a1b7c5d2e8k4m",
+      "webhookSecret": "",
       "webhookPath": "/plugins/pinto/webhook"
     }
   }
@@ -145,7 +147,7 @@ openclaw plugins install .
         "sales": {
           "enabled": true,
           "apiUrl": "https://api.pinto-app.com",
-          "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
+          "botId": "bot-sales",
           "agentId": "sales-agent",
           "observerAgentIds": ["audit-agent", "memory-agent"],
           "webhookSecret": "pinto-oc-sales-secret",
@@ -154,7 +156,7 @@ openclaw plugins install .
         "support": {
           "enabled": true,
           "apiUrl": "https://api.pinto-app.com",
-          "botId": "d03cb2fd-6fd6-4d93-8f30-111111111111",
+          "botId": "bot-support",
           "agentId": "support-agent",
           "webhookSecret": "pinto-oc-support-secret",
           "webhookPath": "/plugins/pinto/support"
@@ -267,6 +269,8 @@ openclaw plugins install .
 ```md
 You are the sales assistant for Pinto.
 Focus on product guidance, pricing, promotions, and converting leads.
+When a message comes from Pinto, answer with normal user-facing text.
+Do not call the Pinto API or include bot_id/chat_id JSON in the reply.
 Be concise and helpful.
 ```
 
@@ -284,7 +288,7 @@ Be concise and helpful.
     "pinto": {
       "enabled": true,
       "apiUrl": "https://api.pinto-app.com",
-      "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
+      "botId": "bot-sales",
       "agentId": "sales-agent",
       "webhookSecret": "pinto-oc-9f3a1b7c5d2e8k4m",
       "webhookPath": "/plugins/pinto/webhook"
@@ -387,8 +391,8 @@ Pinto bot ต้องมีข้อมูลต่อไปนี้:
   - `webhook_url = <public-openclaw-base-url> + <Webhook Path>`
   - ตัวอย่างเช่น ถ้า OpenClaw เปิดผ่าน `https://bot.example.com` และ `Webhook Path` เป็น `/plugins/pinto/custom-webhook`
   - ให้ใส่ `https://bot.example.com/plugins/pinto/custom-webhook`
-- Bot UUID
-  - ใช้ค่า `_id` ของ bot เป็นค่า `Bot Id` ใน OpenClaw
+- Bot ID
+  - ใช้ค่า `bot_id` ของ bot เป็นค่า `Bot Id` ใน OpenClaw
 - ถ้ามีการเปิดใช้ secret
   - Pinto ต้องส่ง header `X-Pinto-Secret` เข้ามา
   - ค่า secret ต้องตรงกับ `Webhook Secret` ใน OpenClaw
@@ -441,7 +445,7 @@ POST /plugins/pinto/webhook
 
 ```json
 {
-  "bot_id": "20387880-7934-40c3-b7d4-9fa6557697cf",
+  "bot_id": "bot-sales",
   "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
   "message": "hello",
   "user_id": "a7c3fe36-cf41-42b5-a290-ca98e6129fac",
@@ -461,7 +465,7 @@ POST <apiUrl>/v1/bots/webhook/receive
 
 ```json
 {
-  "bot_id": "20387880-7934-40c3-b7d4-9fa6557697cf",
+  "bot_id": "bot-sales",
   "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
   "reply_message": "สวัสดีจาก OpenClaw"
 }
@@ -471,7 +475,7 @@ POST <apiUrl>/v1/bots/webhook/receive
 
 ```json
 {
-  "bot_id": "20387880-7934-40c3-b7d4-9fa6557697cf",
+  "bot_id": "bot-sales",
   "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
   "reply_message": "ดูรูปนี้",
   "media_url": "https://example.com/image.png"
@@ -504,7 +508,7 @@ curl -i -X POST http://127.0.0.1:18789/plugins/pinto/webhook \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
-    "bot_id":"20387880-7934-40c3-b7d4-9fa6557697cf",
+    "bot_id":"bot-sales",
     "chat_id":"5f315d4e-cf22-4054-bbb0-2fe074bd3892",
     "message":"hello",
     "user_id":"a7c3fe36-cf41-42b5-a290-ca98e6129fac"
@@ -524,7 +528,7 @@ curl -i -X POST https://your-host.example.com/plugins/pinto/webhook \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
-    "bot_id":"20387880-7934-40c3-b7d4-9fa6557697cf",
+    "bot_id":"bot-sales",
     "chat_id":"5f315d4e-cf22-4054-bbb0-2fe074bd3892",
     "message":"hello",
     "user_id":"a7c3fe36-cf41-42b5-a290-ca98e6129fac"
@@ -538,7 +542,7 @@ curl -i -X POST https://api.pinto-app.com/v1/bots/webhook/receive \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
-    "bot_id":"20387880-7934-40c3-b7d4-9fa6557697cf",
+    "bot_id":"bot-sales",
     "chat_id":"5f315d4e-cf22-4054-bbb0-2fe074bd3892",
     "reply_message":"OpenClaw outbound test"
   }'
@@ -566,7 +570,7 @@ curl -i -X POST https://api.pinto-app.com/v1/bots/webhook/receive \
 
 สาเหตุที่พบบ่อย:
 
-- `Bot Id` ไม่ใช่ UUID จริง
+- `Bot Id` ไม่ตรงกับค่า `bot_id` จริงของ Pinto
 - `chat_id` อยู่คนละ environment
 - payload ที่ส่งไป `POST /v1/bots/webhook/receive` ไม่ตรงกับ backend Pinto
 
@@ -613,7 +617,7 @@ Main features:
 - A working OpenClaw instance
 - Node.js 20+ and npm
 - An existing Pinto bot
-- The real Pinto bot UUID
+- The real Pinto bot ID
 - A valid Pinto API base URL such as `https://api.pinto-app.com`
 - A public or reachable URL that Pinto can call
 
@@ -665,8 +669,8 @@ Fields:
   - Pinto API base URL
   - With or without a trailing slash is supported
 - `Bot Id`
-  - Must be the real Pinto bot UUID
-  - Do not use the human-readable bot slug
+  - Must be the real Pinto bot ID
+  - Must match the `bot_id` value Pinto sends
 - `Enabled`
   - Enables or disables the channel
 - `Agent Id`
@@ -679,6 +683,7 @@ Fields:
   - Observer agents do not reply back to Pinto
 - `Webhook Secret`
   - Shared secret used with `X-Pinto-Secret`
+  - The plugin does not generate this value by default
   - If empty, inbound secret validation is not enforced
 
 Example config:
@@ -691,7 +696,7 @@ Example config:
       "apiUrl": "https://api.pinto-app.com",
       "botId": "",
       "agentId": "",
-      "webhookSecret": "pinto-oc-9f3a1b7c5d2e8k4m",
+      "webhookSecret": "",
       "webhookPath": "/plugins/pinto/webhook"
     }
   }
@@ -709,7 +714,7 @@ Multi-account example:
         "sales": {
           "enabled": true,
           "apiUrl": "https://api.pinto-app.com",
-          "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
+          "botId": "bot-sales",
           "agentId": "sales-agent",
           "observerAgentIds": ["audit-agent", "memory-agent"],
           "webhookSecret": "pinto-oc-sales-secret",
@@ -718,7 +723,7 @@ Multi-account example:
         "support": {
           "enabled": true,
           "apiUrl": "https://api.pinto-app.com",
-          "botId": "d03cb2fd-6fd6-4d93-8f30-111111111111",
+          "botId": "bot-support",
           "agentId": "support-agent",
           "webhookSecret": "pinto-oc-support-secret",
           "webhookPath": "/plugins/pinto/support"
@@ -825,6 +830,8 @@ Example `AGENTS.md`:
 ```md
 You are the sales assistant for Pinto.
 Focus on product guidance, pricing, promotions, and converting leads.
+When a message comes from Pinto, answer with normal user-facing text.
+Do not call the Pinto API or include bot_id/chat_id JSON in the reply.
 Be concise and helpful.
 ```
 
@@ -842,7 +849,7 @@ Single-account example:
     "pinto": {
       "enabled": true,
       "apiUrl": "https://api.pinto-app.com",
-      "botId": "20387880-7934-40c3-b7d4-9fa6557697cf",
+      "botId": "bot-sales",
       "agentId": "sales-agent",
       "observerAgentIds": ["audit-agent", "memory-agent"],
       "webhookSecret": "pinto-oc-9f3a1b7c5d2e8k4m",
@@ -944,8 +951,8 @@ Your Pinto bot must have:
   - The URL Pinto calls
   - Example:
   - `https://your-host.example.com/plugins/pinto/webhook`
-- Bot UUID
-  - Use the bot `_id` as `Bot Id` in OpenClaw
+- Bot ID
+  - Use the bot `bot_id` as `Bot Id` in OpenClaw
 - If webhook security is enabled
   - Pinto must send `X-Pinto-Secret`
   - The value must match the OpenClaw `Webhook Secret`
@@ -1000,7 +1007,7 @@ Example request body:
 
 ```json
 {
-  "bot_id": "20387880-7934-40c3-b7d4-9fa6557697cf",
+  "bot_id": "bot-sales",
   "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
   "message": "hello",
   "user_id": "a7c3fe36-cf41-42b5-a290-ca98e6129fac",
@@ -1020,7 +1027,7 @@ Example body:
 
 ```json
 {
-  "bot_id": "20387880-7934-40c3-b7d4-9fa6557697cf",
+  "bot_id": "bot-sales",
   "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
   "reply_message": "Hello from OpenClaw"
 }
@@ -1030,7 +1037,7 @@ Media example:
 
 ```json
 {
-  "bot_id": "20387880-7934-40c3-b7d4-9fa6557697cf",
+  "bot_id": "bot-sales",
   "chat_id": "5f315d4e-cf22-4054-bbb0-2fe074bd3892",
   "reply_message": "See this image",
   "media_url": "https://example.com/image.png"
@@ -1063,7 +1070,7 @@ curl -i -X POST http://127.0.0.1:18789/plugins/pinto/webhook \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
-    "bot_id":"20387880-7934-40c3-b7d4-9fa6557697cf",
+    "bot_id":"bot-sales",
     "chat_id":"5f315d4e-cf22-4054-bbb0-2fe074bd3892",
     "message":"hello",
     "user_id":"a7c3fe36-cf41-42b5-a290-ca98e6129fac"
@@ -1083,7 +1090,7 @@ curl -i -X POST https://your-host.example.com/plugins/pinto/webhook \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
-    "bot_id":"20387880-7934-40c3-b7d4-9fa6557697cf",
+    "bot_id":"bot-sales",
     "chat_id":"5f315d4e-cf22-4054-bbb0-2fe074bd3892",
     "message":"hello",
     "user_id":"a7c3fe36-cf41-42b5-a290-ca98e6129fac"
@@ -1097,7 +1104,7 @@ curl -i -X POST https://api.pinto-app.com/v1/bots/webhook/receive \
   -H 'Content-Type: application/json' \
   -H 'X-Pinto-Secret: pinto-oc-9f3a1b7c5d2e8k4m' \
   -d '{
-    "bot_id":"20387880-7934-40c3-b7d4-9fa6557697cf",
+    "bot_id":"bot-sales",
     "chat_id":"5f315d4e-cf22-4054-bbb0-2fe074bd3892",
     "reply_message":"OpenClaw outbound test"
   }'
@@ -1125,7 +1132,7 @@ Common causes:
 
 Common causes:
 
-- `Bot Id` is not a real UUID
+- `Bot Id` does not match the real Pinto `bot_id`
 - `chat_id` belongs to a different environment
 - The payload sent to `POST /v1/bots/webhook/receive` does not match Pinto backend expectations
 

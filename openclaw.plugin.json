@@ -1,14 +1,88 @@
 {
-    "id": "pinto-app-openclaw",
-    "name": "Pinto Chat",
-    "description": "Integration with Pinto Chat API",
-    "version": "1.3.18",
-    "channels": [
-        "pinto"
-    ],
-    "configSchema": {
+  "id": "pinto-app-openclaw",
+  "name": "Pinto Chat",
+  "description": "Integration with Pinto Chat API",
+  "version": "1.3.18",
+  "channels": [
+    "pinto"
+  ],
+  "channelConfigs": {
+    "pinto": {
+      "label": "Pinto Chat",
+      "selectionLabel": "Pinto (Chat Bot)",
+      "blurb": "Pinto App Thailand",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
         "additionalProperties": false,
-        "properties": {}
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "apiUrl": { "type": "string" },
+          "botId": { "type": "string" },
+          "agentId": { "type": "string" },
+          "observerAgentIds": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "webhookSecret": {
+            "anyOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "source": { "type": "string" },
+                  "provider": { "type": "string" },
+                  "id": { "type": "string" },
+                  "value": { "type": "string" }
+                }
+              }
+            ]
+          },
+          "webhookHeaderValue": { "type": "string" },
+          "webhookPath": { "type": "string" },
+          "defaultAccount": { "type": "string" },
+          "accounts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "apiUrl": { "type": "string" },
+                "botId": { "type": "string" },
+                "agentId": { "type": "string" },
+                "observerAgentIds": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "webhookSecret": {
+                  "anyOf": [
+                    { "type": "string" },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "source": { "type": "string" },
+                        "provider": { "type": "string" },
+                        "id": { "type": "string" },
+                        "value": { "type": "string" }
+                      }
+                    }
+                  ]
+                },
+                "webhookHeaderValue": { "type": "string" },
+                "webhookPath": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
     }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
 }

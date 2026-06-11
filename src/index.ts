@@ -1,4 +1,4 @@
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk/mattermost";
+import type { OpenClawPluginApi } from "openclaw/plugin-sdk/core";
 import {
   buildDefaultPintoChannelConfig,
   pintoPlugin,
