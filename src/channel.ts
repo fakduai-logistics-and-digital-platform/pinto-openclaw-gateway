@@ -10,7 +10,7 @@ import {
 } from "openclaw/plugin-sdk/core";
 import { applySetupAccountConfigPatch } from "openclaw/plugin-sdk/setup";
 import { registerPluginHttpRoute } from "openclaw/plugin-sdk/webhook-ingress";
-import { z } from "openclaw/plugin-sdk/zod";
+import { z } from "zod";
 import { PintoWebhookPayload, PintoWebhookReceiveRequest } from "./types.js";
 const stripTrailingSlash = (url: string) => url.replace(/\/+$/, "");
 const PINTO_SECRET_HEADER = "x-pinto-secret";

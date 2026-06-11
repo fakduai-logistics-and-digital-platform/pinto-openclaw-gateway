@@ -1,6 +1,6 @@
 {
     "name": "pinto-app-openclaw",
-    "version": "1.3.21",
+    "version": "1.3.22",
     "description": "OpenClaw Channel Plugin for Pinto Chat",
     "type": "module",
     "main": "dist/index.js",
@@ -50,7 +50,9 @@
         "test:watch": "vitest",
         "prepare": "npm run build"
     },
-    "dependencies": {},
+    "dependencies": {
+        "zod": "^4.4.3"
+    },
     "devDependencies": {
         "@types/node": "^20.11.0",
         "openclaw": "^2026.6.5",
