@@ -1124,7 +1124,8 @@ openclaw plugins install .</code></pre>
           testing_desc: "Smoke-test the integration locally, publicly, and directly against Pinto.",
           troubleshooting_title: "Troubleshooting",
           troubleshooting_desc: "Most common integration problems and what they usually mean.",
-          footer_text: "Static docs for GitHub Pages. Source of truth for full bilingual content remains in README.md."
+          footer_text: "Static docs for GitHub Pages. Source of truth for full bilingual content remains in README.md.",
+          nav_llm: "llm.txt — for AI agents"
         },
         th: {
           brand_desc: "ปลั๊กอิน OpenClaw channel สำหรับ Pinto Chat ใช้รับ webhook และส่งข้อความตอบกลับอย่างปลอดภัย",
@@ -1188,7 +1189,8 @@ openclaw plugins install .</code></pre>
           testing_desc: "ทดสอบ integration แบบ local, public และยิงตรงไปที่ Pinto",
           troubleshooting_title: "แก้ปัญหา",
           troubleshooting_desc: "ปัญหาที่พบบ่อยและความหมายโดยทั่วไป",
-          footer_text: "เอกสารแบบ static สำหรับ GitHub Pages โดยยังคงใช้ README.md เป็น source of truth ของเนื้อหาสองภาษา"
+          footer_text: "เอกสารแบบ static สำหรับ GitHub Pages โดยยังคงใช้ README.md เป็น source of truth ของเนื้อหาสองภาษา",
+          nav_llm: "llm.txt — สำหรับ AI agent"
         }
       };
 
@@ -1248,17 +1250,28 @@ openclaw plugins install .</code></pre>
         .map((link) => document.querySelector(link.getAttribute("href")))
         .filter(Boolean);
 
+      const visibleIds = new Set();
+
+      const updateActiveLink = () => {
+        const activeSection = sections.find((s) => visibleIds.has(s.id));
+        links.forEach((l) => l.classList.remove("active"));
+        if (activeSection) {
+          links
+            .find((l) => l.getAttribute("href") === "#" + activeSection.id)
+            ?.classList.add("active");
+        }
+      };
+
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
-            const id = "#" + entry.target.id;
-            const link = links.find((item) => item.getAttribute("href") === id);
-            if (!link) return;
             if (entry.isIntersecting) {
-              links.forEach((item) => item.classList.remove("active"));
-              link.classList.add("active");
+              visibleIds.add(entry.target.id);
+            } else {
+              visibleIds.delete(entry.target.id);
             }
           });
+          updateActiveLink();
         },
         { rootMargin: "-35% 0px -55% 0px", threshold: 0.01 }
       );

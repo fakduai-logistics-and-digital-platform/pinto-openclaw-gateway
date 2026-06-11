@@ -47,25 +47,29 @@ const PintoAccountConfigSchema = z
   })
   .strict();
 
-const PintoChannelConfigSchema = z.preprocess((raw) => {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return raw;
-  }
+const PintoChannelConfigSchema = z.preprocess(
+  (raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return raw;
+    }
 
-  const value = { ...(raw as Record<string, unknown>) };
-  if (
-    value.webhookSecret === undefined &&
-    value.webhookHeaderValue !== undefined
-  ) {
-    value.webhookSecret = value.webhookHeaderValue;
-  }
-  delete value.webhookHeaderValue;
-  return value;
-},
-PintoAccountConfigSchema.extend({
-  accounts: z.record(z.string(), PintoAccountConfigSchema.optional()).optional(),
-  defaultAccount: z.string().trim().min(1).optional(),
-}));
+    const value = { ...(raw as Record<string, unknown>) };
+    if (
+      value.webhookSecret === undefined &&
+      value.webhookHeaderValue !== undefined
+    ) {
+      value.webhookSecret = value.webhookHeaderValue;
+    }
+    delete value.webhookHeaderValue;
+    return value;
+  },
+  PintoAccountConfigSchema.extend({
+    accounts: z
+      .record(z.string(), PintoAccountConfigSchema.optional())
+      .optional(),
+    defaultAccount: z.string().trim().min(1).optional(),
+  }),
+);
 
 const normalizeWebhookSecret = (value: unknown): string | undefined => {
   if (typeof value === "string") {
@@ -107,18 +111,16 @@ const hasTopLevelPintoConfig = (cfg: any) => {
   const channelConfig = getRawPintoChannelConfig(cfg);
   return Boolean(
     channelConfig &&
-      typeof channelConfig === "object" &&
-      !Array.isArray(channelConfig) &&
-      (
-        channelConfig.botId !== undefined ||
-        channelConfig.agentId !== undefined ||
-        channelConfig.observerAgentIds !== undefined ||
-        channelConfig.webhookSecret !== undefined ||
-        channelConfig.webhookHeaderValue !== undefined ||
-        channelConfig.apiUrl !== undefined ||
-        channelConfig.webhookPath !== undefined ||
-        channelConfig.enabled !== undefined
-      ),
+    typeof channelConfig === "object" &&
+    !Array.isArray(channelConfig) &&
+    (channelConfig.botId !== undefined ||
+      channelConfig.agentId !== undefined ||
+      channelConfig.observerAgentIds !== undefined ||
+      channelConfig.webhookSecret !== undefined ||
+      channelConfig.webhookHeaderValue !== undefined ||
+      channelConfig.apiUrl !== undefined ||
+      channelConfig.webhookPath !== undefined ||
+      channelConfig.enabled !== undefined),
   );
 };
 
@@ -165,7 +167,6 @@ const getPintoChannelConfig = (cfg: any, accountId?: string | null) => {
     ...merged,
   };
 };
-
 
 const findPintoAccountByBotId = (cfg: any, botId: string) => {
   const targetBotId = botId.trim();
@@ -269,8 +270,7 @@ const PINTO_SENSITIVE_LOG_KEY_PATTERN =
 const PINTO_URL_LOG_KEY_PATTERN = /(href|src|uri|url)$/i;
 
 const sanitizePintoLogString = (value: string, key?: string): string => {
-  const trimmed =
-    value.length > 500 ? `${value.slice(0, 500)}...` : value;
+  const trimmed = value.length > 500 ? `${value.slice(0, 500)}...` : value;
 
   if (!key || !PINTO_URL_LOG_KEY_PATTERN.test(key)) {
     return trimmed;
@@ -699,7 +699,9 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
           "Pinto webhookSecret is empty. Set channels.pinto.webhookSecret if you want webhook secret validation.",
         );
       }
-      if (webhookPath !== (account?.config?.webhookPath?.trim() || webhookPath)) {
+      if (
+        webhookPath !== (account?.config?.webhookPath?.trim() || webhookPath)
+      ) {
         warnings.push(
           `Pinto webhookPath should start with '/'. Use ${webhookPath} as channels.pinto.webhookPath.`,
         );
@@ -708,7 +710,8 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
     },
   },
   setup: {
-    resolveAccountId: ({ accountId }) => accountId?.trim() || DEFAULT_ACCOUNT_ID,
+    resolveAccountId: ({ accountId }) =>
+      accountId?.trim() || DEFAULT_ACCOUNT_ID,
     applyAccountConfig: ({
       cfg,
       accountId,
@@ -906,7 +909,11 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
             const matched = findPintoAccountByBotId(ctx.cfg, payload.bot_id);
             if (!matched) {
               res.statusCode = 403;
-              res.end(JSON.stringify({ error: "Invalid bot_id for configured Pinto accounts" }));
+              res.end(
+                JSON.stringify({
+                  error: "Invalid bot_id for configured Pinto accounts",
+                }),
+              );
               return true;
             }
 
@@ -915,10 +922,9 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
             const targetBotId = targetAccount?.botId?.trim();
             const targetAgentId = targetAccount?.agentId?.trim();
             const targetObserverAgentIds =
-              normalizeObserverAgentIds(targetAccount?.observerAgentIds)?.filter(
-                (agentId) => agentId !== targetAgentId,
-              ) || [];
-
+              normalizeObserverAgentIds(
+                targetAccount?.observerAgentIds,
+              )?.filter((agentId) => agentId !== targetAgentId) || [];
 
             const configuredSecret = normalizeWebhookSecret(
               targetAccount?.webhookSecret,

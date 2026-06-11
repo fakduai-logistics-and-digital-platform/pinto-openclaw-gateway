@@ -51,11 +51,11 @@
         "prepare": "npm run build"
     },
     "dependencies": {
-        "zod": "^4.3.6"
+        "zod": "^4.4.3"
     },
     "devDependencies": {
         "@types/node": "^20.11.0",
-        "openclaw": "2026.3.24",
+        "openclaw": "^2026.6.5",
         "tsx": "^4.7.0",
         "typescript": "^5.4.0",
         "vitest": "^1.6.0"
