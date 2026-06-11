@@ -520,7 +520,7 @@ curl -i -X POST http://127.0.0.1:18789/plugins/pinto/webhook \
 response ที่คาดหวัง:
 
 ```json
-{"message":"Message forwarded to agent"}
+{"message":"Message accepted"}
 ```
 
 #### ทดสอบ inbound แบบ public URL
@@ -1084,7 +1084,7 @@ curl -i -X POST http://127.0.0.1:18789/plugins/pinto/webhook \
 Expected response:
 
 ```json
-{"message":"Message forwarded to agent"}
+{"message":"Message accepted"}
 ```
 
 #### Public inbound test

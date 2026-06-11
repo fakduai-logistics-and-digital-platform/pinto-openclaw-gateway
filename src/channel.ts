@@ -493,7 +493,28 @@ const buildPintoImageMediaContext = (imageUrlValue: unknown) => {
   };
 };
 
-const stripPintoPrefix = (id: string) => id.replace(/^pinto:/, "");
+const normalizePintoChatId = (id: unknown): string | undefined => {
+  if (typeof id !== "string") {
+    return undefined;
+  }
+  const trimmed = id.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const withoutProvider = trimmed.replace(/^pinto:/i, "").trim();
+  return withoutProvider || undefined;
+};
+
+const pintoTargetError = () =>
+  new Error("Pinto chat_id target is required. Use a chat_id or pinto:<chat_id>.");
+
+const resolvePintoOutboundTarget = (to: unknown) => {
+  const chatId = normalizePintoChatId(to);
+  if (chatId) {
+    return { ok: true as const, to: chatId };
+  }
+  return { ok: false as const, error: pintoTargetError() };
+};
 
 const buildPintoApiError = async (res: Response) => {
   const detail = await res
@@ -548,10 +569,14 @@ async function sendPintoText(params: {
   if (!botId) {
     throw new Error("Pinto botId is not configured");
   }
+  const chatId = normalizePintoChatId(params.to);
+  if (!chatId) {
+    throw pintoTargetError();
+  }
 
   const payload: PintoWebhookReceiveRequest = {
     bot_id: botId,
-    chat_id: stripPintoPrefix(params.to),
+    chat_id: chatId,
     reply_message: params.text,
   };
 
@@ -585,10 +610,14 @@ async function sendPintoMedia(params: {
   if (!botId) {
     throw new Error("Pinto botId is not configured");
   }
+  const chatId = normalizePintoChatId(params.to);
+  if (!chatId) {
+    throw pintoTargetError();
+  }
 
   const payload: PintoWebhookReceiveRequest = {
     bot_id: botId,
-    chat_id: stripPintoPrefix(params.to),
+    chat_id: chatId,
     reply_message: params.text ?? "",
     media_url: params.mediaUrl,
   };
@@ -782,6 +811,34 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
     ],
   },
 
+  messaging: {
+    normalizeTarget: (raw: string) => normalizePintoChatId(raw),
+    inferTargetChatType: () => "direct",
+    formatTargetDisplay: (params: { target: string; display?: string }) =>
+      params.display?.trim() ||
+      normalizePintoChatId(params.target) ||
+      params.target,
+    targetResolver: {
+      hint: "Use a Pinto chat_id or pinto:<chat_id>.",
+      looksLikeId: (raw: string, normalized?: string) =>
+        Boolean(normalizePintoChatId(normalized) || normalizePintoChatId(raw)),
+      resolveTarget: async (params: { input: string; normalized: string }) => {
+        const chatId =
+          normalizePintoChatId(params.normalized) ||
+          normalizePintoChatId(params.input);
+        if (!chatId) {
+          return null;
+        }
+        return {
+          to: chatId,
+          kind: "user",
+          display: chatId,
+          source: "normalized",
+        };
+      },
+    },
+  },
+
   config: {
     listAccountIds: (cfg: any) => listPintoAccountIds(cfg),
     defaultAccountId: (cfg: any) => resolveDefaultPintoAccountId(cfg),
@@ -842,6 +899,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
 
   outbound: {
     deliveryMode: "direct",
+    resolveTarget: ({ to }) => resolvePintoOutboundTarget(to),
     sendText: async ({ to, text, accountId, cfg }) =>
       sendPintoText({ cfg, accountId, to, text }),
 
@@ -945,105 +1003,122 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
               lastInboundAt: Date.now(),
             });
 
-            const inboundImageUrl = resolvePintoInboundImageUrl(payload);
-            logPintoWebhookPayload(ctx.log, payload, inboundImageUrl);
+            res.statusCode = 200;
+            res.setHeader?.("Content-Type", "application/json");
+            res.end(JSON.stringify({ message: "Message accepted" }));
 
-            const peer = { kind: "direct", id: payload.chat_id };
-            const route = targetAgentId
-              ? {
-                  accountId: targetAccountId,
-                  sessionKey: ctx.channelRuntime.routing.buildAgentSessionKey({
-                    agentId: targetAgentId,
+            const dispatchPintoInboundReply = async () => {
+              const inboundImageUrl = resolvePintoInboundImageUrl(payload);
+              logPintoWebhookPayload(ctx.log, payload, inboundImageUrl);
+
+              const peer = { kind: "direct", id: payload.chat_id };
+              const route = targetAgentId
+                ? {
+                    accountId: targetAccountId,
+                    sessionKey:
+                      ctx.channelRuntime.routing.buildAgentSessionKey({
+                        agentId: targetAgentId,
+                        channel: "pinto",
+                        accountId: targetAccountId,
+                        peer,
+                      }),
+                  }
+                : ctx.channelRuntime.routing.resolveAgentRoute({
+                    cfg: ctx.cfg,
                     channel: "pinto",
                     accountId: targetAccountId,
                     peer,
-                  }),
-                }
-              : ctx.channelRuntime.routing.resolveAgentRoute({
-                  cfg: ctx.cfg,
-                  channel: "pinto",
-                  accountId: targetAccountId,
-                  peer,
+                  });
+
+              const buildMsgCtx = (sessionKey: string, accountId: string) =>
+                ctx.channelRuntime.reply.finalizeInboundContext({
+                  Body: payload.message ?? "",
+                  BodyForAgent: payload.message ?? "",
+                  RawBody: payload.message ?? "",
+                  CommandBody: payload.message ?? "",
+                  BodyForCommands: payload.message ?? "",
+                  ...buildPintoImageMediaContext(inboundImageUrl?.url),
+                  From: `pinto:${payload.user_id ?? payload.chat_id}`,
+                  To: `pinto:${payload.chat_id}`,
+                  SessionKey: sessionKey,
+                  AccountId: accountId,
+                  OriginatingChannel: "pinto",
+                  OriginatingTo: `pinto:${payload.chat_id}`,
+                  ExplicitDeliverRoute: true,
+                  ChatType: "direct",
+                  SenderName:
+                    payload.username ?? payload.user_id ?? payload.chat_id,
+                  SenderId: payload.user_id ?? payload.chat_id,
+                  Provider: "pinto",
+                  Surface: "pinto",
+                  ConversationLabel: `Pinto: ${payload.chat_id}`,
+                  Timestamp: Date.now(),
+                  CommandAuthorized: true,
                 });
 
-            const buildMsgCtx = (sessionKey: string, accountId: string) =>
-              ctx.channelRuntime.reply.finalizeInboundContext({
-                Body: payload.message ?? "",
-                BodyForAgent: payload.message ?? "",
-                RawBody: payload.message ?? "",
-                CommandBody: payload.message ?? "",
-                BodyForCommands: payload.message ?? "",
-                ...buildPintoImageMediaContext(inboundImageUrl?.url),
-                From: `pinto:${payload.user_id ?? payload.chat_id}`,
-                To: `pinto:${payload.chat_id}`,
-                SessionKey: sessionKey,
-                AccountId: accountId,
-                OriginatingChannel: "pinto",
-                OriginatingTo: `pinto:${payload.chat_id}`,
-                ExplicitDeliverRoute: true,
-                ChatType: "direct",
-                SenderName:
-                  payload.username ?? payload.user_id ?? payload.chat_id,
-                SenderId: payload.user_id ?? payload.chat_id,
-                Provider: "pinto",
-                Surface: "pinto",
-                ConversationLabel: `Pinto: ${payload.chat_id}`,
-                Timestamp: Date.now(),
-                CommandAuthorized: true,
-              });
+              const msgCtx = buildMsgCtx(route.sessionKey, route.accountId);
 
-            const msgCtx = buildMsgCtx(route.sessionKey, route.accountId);
+              for (const observerAgentId of targetObserverAgentIds) {
+                const observerSessionKey =
+                  ctx.channelRuntime.routing.buildAgentSessionKey({
+                    agentId: observerAgentId,
+                    channel: "pinto",
+                    accountId: targetAccountId,
+                    peer,
+                  });
+                const observerCtx = buildMsgCtx(
+                  observerSessionKey,
+                  targetAccountId,
+                );
 
-            for (const observerAgentId of targetObserverAgentIds) {
-              const observerSessionKey =
-                ctx.channelRuntime.routing.buildAgentSessionKey({
-                  agentId: observerAgentId,
-                  channel: "pinto",
-                  accountId: targetAccountId,
-                  peer,
-                });
-              const observerCtx = buildMsgCtx(
-                observerSessionKey,
-                targetAccountId,
-              );
+                // Observer agents share the inbound context but never reply back to Pinto.
+                void ctx.channelRuntime.reply
+                  .dispatchReplyWithBufferedBlockDispatcher({
+                    ctx: observerCtx,
+                    cfg: ctx.cfg,
+                    dispatcherOptions: {
+                      deliver: async () => undefined,
+                    },
+                  })
+                  .catch((error: any) => {
+                    ctx.log?.warn?.(
+                      `[PintoPlugin] Observer agent ${observerAgentId} failed: ${
+                        error?.message ?? String(error)
+                      }`,
+                    );
+                  });
+              }
 
-              // Observer agents share the inbound context but never reply back to Pinto.
-              void ctx.channelRuntime.reply
-                .dispatchReplyWithBufferedBlockDispatcher({
-                  ctx: observerCtx,
+              await ctx.channelRuntime.reply.dispatchReplyWithBufferedBlockDispatcher(
+                {
+                  ctx: msgCtx,
                   cfg: ctx.cfg,
-                  dispatcherOptions: {
-                    deliver: async () => undefined,
+                  replyOptions: {
+                    sourceReplyDeliveryMode: "automatic",
                   },
-                })
-                .catch((error: any) => {
-                  ctx.log?.warn?.(
-                    `[PintoPlugin] Observer agent ${observerAgentId} failed: ${
-                      error?.message ?? String(error)
-                    }`,
-                  );
-                });
-            }
-
-            await ctx.channelRuntime.reply.dispatchReplyWithBufferedBlockDispatcher(
-              {
-                ctx: msgCtx,
-                cfg: ctx.cfg,
-                dispatcherOptions: {
-                  deliver: async (replyPayload: PintoReplyPayload) => {
-                    await deliverPintoReplyPayload({
-                      cfg: ctx.cfg,
-                      accountId: targetAccountId,
-                      to: payload.chat_id,
-                      payload: replyPayload,
-                    });
+                  dispatcherOptions: {
+                    deliver: async (replyPayload: PintoReplyPayload) => {
+                      await deliverPintoReplyPayload({
+                        cfg: ctx.cfg,
+                        accountId: targetAccountId,
+                        to: payload.chat_id,
+                        payload: replyPayload,
+                      });
+                    },
                   },
                 },
-              },
-            );
+              );
+            };
 
-            res.statusCode = 200;
-            res.end(JSON.stringify({ message: "Message forwarded to agent" }));
+            queueMicrotask(() => {
+              void dispatchPintoInboundReply().catch((error: any) => {
+                ctx.log?.error?.(
+                  `[PintoPlugin] Background reply dispatch error: ${
+                    error?.message ?? String(error)
+                  }`,
+                );
+              });
+            });
             return true;
           } catch (error: any) {
             ctx.log?.error?.(
