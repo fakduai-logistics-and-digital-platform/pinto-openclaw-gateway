@@ -221,6 +221,61 @@ const normalizeObserverAgentIds = (value: unknown): string[] | undefined => {
   return normalized.length ? Array.from(new Set(normalized)) : undefined;
 };
 
+const normalizePintoImageUrl = (value: unknown): string | undefined => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
+
+const inferPintoImageMimeType = (imageUrl: string): string | undefined => {
+  let pathname = imageUrl;
+  try {
+    pathname = new URL(imageUrl).pathname;
+  } catch {
+    pathname = imageUrl.split(/[?#]/, 1)[0] ?? imageUrl;
+  }
+
+  const extension = pathname.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  switch (extension) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    case "heic":
+      return "image/heic";
+    case "heif":
+      return "image/heif";
+    case "bmp":
+      return "image/bmp";
+    case "tif":
+    case "tiff":
+      return "image/tiff";
+    default:
+      return undefined;
+  }
+};
+
+const buildPintoImageMediaContext = (imageUrlValue: unknown) => {
+  const imageUrl = normalizePintoImageUrl(imageUrlValue);
+  if (!imageUrl) {
+    return {};
+  }
+  const mediaType = inferPintoImageMimeType(imageUrl) ?? "image/*";
+  return {
+    MediaUrl: imageUrl,
+    MediaUrls: [imageUrl],
+    MediaType: mediaType,
+    MediaTypes: [mediaType],
+  };
+};
+
 const stripPintoPrefix = (id: string) => id.replace(/^pinto:/, "");
 
 const buildPintoApiError = async (res: Response) => {
@@ -692,6 +747,7 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
                 RawBody: payload.message ?? "",
                 CommandBody: payload.message ?? "",
                 BodyForCommands: payload.message ?? "",
+                ...buildPintoImageMediaContext(payload.image_url),
                 From: `pinto:${payload.user_id ?? payload.chat_id}`,
                 To: `pinto:${payload.chat_id}`,
                 SessionKey: sessionKey,

@@ -1,5 +1,11 @@
+import { EventEmitter } from "node:events";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { pintoPlugin, setPintoRuntime } from "./channel.js";
+import { registerPluginHttpRoute } from "openclaw/plugin-sdk/webhook-ingress";
+import { pintoPlugin } from "./channel.js";
+
+vi.mock("openclaw/plugin-sdk/webhook-ingress", () => ({
+  registerPluginHttpRoute: vi.fn(() => vi.fn()),
+}));
 
 describe("pintoPlugin", () => {
   describe("meta fields", () => {
@@ -298,6 +304,106 @@ describe("pintoPlugin", () => {
       expect(next.channels.pinto.webhookSecret).toBe("secret-new");
       expect(next.channels.pinto.webhookPath).toBe(
         "/plugins/pinto/custom-webhook",
+      );
+    });
+  });
+
+  describe("gateway.startAccount", () => {
+    beforeEach(() => {
+      vi.mocked(registerPluginHttpRoute).mockReset();
+      vi.mocked(registerPluginHttpRoute).mockReturnValue(vi.fn());
+    });
+
+    it("should forward inbound Pinto image_url as OpenClaw media context", async () => {
+      const abortController = new AbortController();
+      const dispatchReplyWithBufferedBlockDispatcher = vi
+        .fn()
+        .mockResolvedValue(undefined);
+      const finalizeInboundContext = vi.fn((ctx: any) => ctx);
+      const cfg = {
+        channels: {
+          pinto: {
+            accounts: {
+              bot1: {
+                enabled: true,
+                apiUrl: "https://api.pinto-app.com",
+                botId: "bot-123",
+                agentId: "agent-1",
+                webhookSecret: "secret123",
+                webhookPath: "/plugins/pinto/webhook",
+              },
+            },
+          },
+        },
+      };
+
+      const lifecycle = pintoPlugin.gateway!.startAccount({
+        cfg,
+        accountId: "bot1",
+        abortSignal: abortController.signal,
+        log: { warn: vi.fn(), error: vi.fn() },
+        setStatus: vi.fn(),
+        channelRuntime: {
+          routing: {
+            buildAgentSessionKey: vi.fn(() => "session-1"),
+            resolveAgentRoute: vi.fn(),
+          },
+          reply: {
+            finalizeInboundContext,
+            dispatchReplyWithBufferedBlockDispatcher,
+          },
+        },
+      } as any);
+
+      const route = vi.mocked(registerPluginHttpRoute).mock.calls[0][0];
+      const req = new EventEmitter() as any;
+      req.method = "POST";
+      req.headers = { "x-pinto-secret": "secret123" };
+      const res = {
+        statusCode: 0,
+        setHeader: vi.fn(),
+        end: vi.fn(),
+      };
+
+      queueMicrotask(() => {
+        req.emit(
+          "data",
+          Buffer.from(
+            JSON.stringify({
+              bot_id: "bot-123",
+              chat_id: "chat1",
+              message: "please check this",
+              image_url: "https://img.example.com/photo.png?token=abc",
+              user_id: "user1",
+            }),
+          ),
+        );
+        req.emit("end");
+      });
+
+      await route.handler(req, res as any);
+      abortController.abort();
+      await lifecycle;
+
+      expect(res.statusCode).toBe(200);
+      expect(finalizeInboundContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          BodyForAgent: "please check this",
+          MediaUrl: "https://img.example.com/photo.png?token=abc",
+          MediaUrls: ["https://img.example.com/photo.png?token=abc"],
+          MediaType: "image/png",
+          MediaTypes: ["image/png"],
+        }),
+      );
+      expect(dispatchReplyWithBufferedBlockDispatcher).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ctx: expect.objectContaining({
+            MediaUrl: "https://img.example.com/photo.png?token=abc",
+            MediaUrls: ["https://img.example.com/photo.png?token=abc"],
+            MediaType: "image/png",
+            MediaTypes: ["image/png"],
+          }),
+        }),
       );
     });
   });
