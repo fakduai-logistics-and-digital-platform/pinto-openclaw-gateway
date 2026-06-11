@@ -1,7 +1,7 @@
 import { DEFAULT_ACCOUNT_ID, buildChannelConfigSchema, setAccountEnabledInConfigSection, } from "openclaw/plugin-sdk/core";
 import { applySetupAccountConfigPatch } from "openclaw/plugin-sdk/setup";
 import { registerPluginHttpRoute } from "openclaw/plugin-sdk/webhook-ingress";
-import { z } from "zod";
+import { z } from "openclaw/plugin-sdk/zod";
 const stripTrailingSlash = (url) => url.replace(/\/+$/, "");
 const PINTO_SECRET_HEADER = "x-pinto-secret";
 const DEFAULT_PINTO_API_URL = "https://api.pinto-app.com";
@@ -44,7 +44,9 @@ const PintoChannelConfigSchema = z.preprocess((raw) => {
     delete value.webhookHeaderValue;
     return value;
 }, PintoAccountConfigSchema.extend({
-    accounts: z.record(z.string(), PintoAccountConfigSchema.optional()).optional(),
+    accounts: z
+        .record(z.string(), PintoAccountConfigSchema.optional())
+        .optional(),
     defaultAccount: z.string().trim().min(1).optional(),
 }));
 const normalizeWebhookSecret = (value) => {
@@ -671,7 +673,9 @@ export const pintoPlugin = {
                         const matched = findPintoAccountByBotId(ctx.cfg, payload.bot_id);
                         if (!matched) {
                             res.statusCode = 403;
-                            res.end(JSON.stringify({ error: "Invalid bot_id for configured Pinto accounts" }));
+                            res.end(JSON.stringify({
+                                error: "Invalid bot_id for configured Pinto accounts",
+                            }));
                             return true;
                         }
                         const targetAccountId = matched.accountId;
