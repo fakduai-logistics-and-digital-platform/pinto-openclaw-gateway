@@ -34,6 +34,16 @@ export interface PintoWebhookReceiveRequest {
 }
 
 /**
+ * Pinto Generating Status Payload (Outbound to Pinto)
+ */
+export interface PintoWebhookGeneratingRequest {
+  bot_id: string;
+  chat_id: string;
+  is_generating: boolean;
+  generating_type: "text" | "image" | "";
+}
+
+/**
  * Plugin Configuration
  */
 export interface PintoPluginConfig {

@@ -11,7 +11,7 @@ import {
 import { applySetupAccountConfigPatch } from "openclaw/plugin-sdk/setup";
 import { registerPluginHttpRoute } from "openclaw/plugin-sdk/webhook-ingress";
 import { z } from "zod";
-import { PintoWebhookPayload, PintoWebhookReceiveRequest } from "./types.js";
+import { PintoWebhookGeneratingRequest, PintoWebhookPayload, PintoWebhookReceiveRequest } from "./types.js";
 const stripTrailingSlash = (url: string) => url.replace(/\/+$/, "");
 const PINTO_SECRET_HEADER = "x-pinto-secret";
 const DEFAULT_PINTO_API_URL = "https://api.pinto-app.com";
@@ -553,6 +553,80 @@ const resolvePintoReplyMediaUrls = (payload: PintoReplyPayload) => {
     .map((mediaUrl) => (typeof mediaUrl === "string" ? mediaUrl.trim() : ""))
     .filter(Boolean);
 };
+
+async function sendPintoGeneratingStatus(params: {
+  cfg: any;
+  accountId?: string | null;
+  chatId: string;
+  isGenerating: boolean;
+  generatingType: "text" | "image" | "";
+}) {
+  const account = getPintoChannelConfig(params.cfg, params.accountId);
+  const apiUrl = stripTrailingSlash(
+    account?.apiUrl ?? "https://api-dev.pinto-app.com",
+  );
+  const botId = account?.botId?.trim();
+  const webhookSecret = normalizeWebhookSecret(account?.webhookSecret);
+  if (!botId || typeof fetch !== "function") {
+    return;
+  }
+
+  const payload: PintoWebhookGeneratingRequest = {
+    bot_id: botId,
+    chat_id: params.chatId,
+    is_generating: params.isGenerating,
+    generating_type: params.generatingType,
+  };
+
+  const res = await fetch(`${apiUrl}/v1/bots/webhook/generating`, {
+    method: "POST",
+    headers: buildPintoHeaders(webhookSecret),
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(await buildPintoApiError(res));
+  }
+}
+
+async function withPintoGeneratingStatus<T>(params: {
+  cfg: any;
+  accountId?: string | null;
+  chatId: string;
+  generatingType: "text" | "image";
+  run: () => Promise<T>;
+  onStatusError?: (error: unknown) => void;
+}) {
+  if (typeof fetch === "function") {
+    try {
+      await sendPintoGeneratingStatus({
+        cfg: params.cfg,
+        accountId: params.accountId,
+        chatId: params.chatId,
+        isGenerating: true,
+        generatingType: params.generatingType,
+      });
+    } catch (error) {
+      params.onStatusError?.(error);
+    }
+  }
+
+  try {
+    return await params.run();
+  } finally {
+    try {
+      await sendPintoGeneratingStatus({
+        cfg: params.cfg,
+        accountId: params.accountId,
+        chatId: params.chatId,
+        isGenerating: false,
+        generatingType: "",
+      });
+    } catch (error) {
+      params.onStatusError?.(error);
+    }
+  }
+}
 
 async function sendPintoText(params: {
   cfg: any;
@@ -1111,7 +1185,20 @@ export const pintoPlugin: ChannelPlugin<any, any> & { configSchema?: any } = {
             };
 
             queueMicrotask(() => {
-              void dispatchPintoInboundReply().catch((error: any) => {
+              void withPintoGeneratingStatus({
+                cfg: ctx.cfg,
+                accountId: targetAccountId,
+                chatId: payload.chat_id,
+                generatingType: resolvePintoInboundImageUrl(payload) ? "image" : "text",
+                run: dispatchPintoInboundReply,
+                onStatusError: (error) => {
+                  ctx.log?.error?.(
+                    `[PintoPlugin] Generating status error: ${
+                      (error as any)?.message ?? String(error)
+                    }`,
+                  );
+                },
+              }).catch((error: any) => {
                 ctx.log?.error?.(
                   `[PintoPlugin] Background reply dispatch error: ${
                     error?.message ?? String(error)

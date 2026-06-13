@@ -10,6 +10,11 @@ vi.mock("openclaw/plugin-sdk/webhook-ingress", () => ({
 }));
 
 describe("pintoPlugin", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 }) as any;
+  });
+
   describe("meta fields", () => {
     it("should have required meta fields per OpenClaw docs", () => {
       const meta = pintoPlugin.meta;
@@ -469,6 +474,7 @@ describe("pintoPlugin", () => {
       await route.handler(req, res as any);
       abortController.abort();
       await lifecycle;
+      await flushAsync();
 
       expect(res.statusCode).toBe(200);
       expect(finalizeInboundContext).toHaveBeenCalledWith(
@@ -565,6 +571,7 @@ describe("pintoPlugin", () => {
         message: "hello",
         user_id: "user1",
       });
+      await flushAsync();
 
       expect(res.statusCode).toBe(200);
       expect(res.end).toHaveBeenCalledWith(
@@ -580,6 +587,86 @@ describe("pintoPlugin", () => {
 
       resolveDispatch();
       await flushAsync();
+      await harness.stop();
+    });
+
+    it("should send Pinto generating status before and after webhook dispatch", async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+      const harness = startGatewayHarness();
+
+      const res = await harness.invoke({
+        bot_id: "bot-123",
+        chat_id: "chat1",
+        message: "hello",
+        user_id: "user1",
+      });
+      await flushAsync();
+
+      expect(res.statusCode).toBe(200);
+      const generatingCalls = (global.fetch as any).mock.calls.filter(
+        ([url]: [string]) => url.endsWith("/v1/bots/webhook/generating"),
+      );
+      expect(generatingCalls).toHaveLength(2);
+      expect(generatingCalls[0][1].headers).toMatchObject({
+        "Content-Type": "application/json",
+        "X-Pinto-Secret": "secret123",
+      });
+      expect(JSON.parse(generatingCalls[0][1].body)).toMatchObject({
+        bot_id: "bot-123",
+        chat_id: "chat1",
+        is_generating: true,
+        generating_type: "text",
+      });
+      expect(JSON.parse(generatingCalls[1][1].body)).toMatchObject({
+        bot_id: "bot-123",
+        chat_id: "chat1",
+        is_generating: false,
+        generating_type: "",
+      });
+
+      await harness.stop();
+    });
+
+    it("should continue dispatch when Pinto generating status fails", async () => {
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 502,
+          statusText: "Bad Gateway",
+          text: vi.fn().mockResolvedValue("bad gateway"),
+        })
+        .mockResolvedValue({ ok: true, status: 200 });
+      const dispatchReplyWithBufferedBlockDispatcher = vi.fn(
+        async ({ dispatcherOptions }) => {
+          await dispatcherOptions.deliver({ text: "agent final reply" });
+        },
+      );
+      const harness = startGatewayHarness({
+        dispatchReplyWithBufferedBlockDispatcher,
+      });
+
+      const res = await harness.invoke({
+        bot_id: "bot-123",
+        chat_id: "chat1",
+        message: "hello",
+        user_id: "user1",
+      });
+      await flushAsync();
+
+      expect(res.statusCode).toBe(200);
+      expect(dispatchReplyWithBufferedBlockDispatcher).toHaveBeenCalled();
+      expect(harness.log.error).toHaveBeenCalledWith(
+        expect.stringContaining("Generating status error"),
+      );
+      expect((global.fetch as any).mock.calls).toEqual(
+        expect.arrayContaining([
+          expect.arrayContaining([
+            "https://api.pinto-app.com/v1/bots/webhook/receive",
+          ]),
+        ]),
+      );
+
       await harness.stop();
     });
 
@@ -613,9 +700,11 @@ describe("pintoPlugin", () => {
           }),
         }),
       );
-      expect(
-        JSON.parse((global.fetch as any).mock.calls[0][1].body),
-      ).toMatchObject({
+      const receiveCall = (global.fetch as any).mock.calls.find(
+        ([url]: [string]) => url.endsWith("/v1/bots/webhook/receive"),
+      );
+      expect(receiveCall).toBeDefined();
+      expect(JSON.parse(receiveCall[1].body)).toMatchObject({
         bot_id: "bot-123",
         chat_id: "chat1",
         reply_message: "agent final reply",
